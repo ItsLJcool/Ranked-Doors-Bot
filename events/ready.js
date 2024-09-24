@@ -1,12 +1,19 @@
 const { Events } = require('discord.js');
 
-const { Tags, sequelize } = require('../SQLite/Tags');
+const { init_db, sync, Settings_Channels, sequelize } = require('../SQLite/DataStuff');
 
 module.exports = {
 	name: Events.ClientReady,
 	once: true,
-	execute(client) {
-		Tags.sync();
+	async execute(client) {
+		await sync();
+		
+		try {
+			await init_db();
+		} catch (error) {
+			console.error(error);
+		}
+
 		console.log(`Ready! Logged in as ${client.user.tag}`);
 	},
 };
