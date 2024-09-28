@@ -73,6 +73,8 @@ async function send_user_data(interaction) {
 
 async function send_matches_data(interaction) {
     const testMatch = await UserData.findByPk(target);
+
+    await interaction.editReply({ content: "TODO: lol" });
 }
 
 module.exports = {
