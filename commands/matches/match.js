@@ -30,6 +30,27 @@ const GameModes = [
 
 async function start(interaction) {
 	await interaction.deferReply();
+	
+	const queueId = await Settings_Channels.findOne({ where: { name: "Queue Voice Channel" } });
+	console.log("queueId: ", queueId.dataValues.channel_id);
+	
+	const userVoiceChannel = interaction.member.voice.channel;
+	console.log("userVoiceChannel: ", userVoiceChannel);
+
+	if (!userVoiceChannel && (queueId.dataValues.channel_id != "" || queueId.dataValues.channel_id != " ")) {
+		return interaction.editReply(`You are not connected to <#${queueId.dataValues.channel_id}>`);
+	}
+	
+	
+	// Define the specific voice channel you want to check against (by ID or name)
+	const targetVoiceChannel = interaction.guild.channels.cache.get(queueId.dataValues.channel_id);
+	
+	// Check if the user is in the specific voice channel
+	if (userVoiceChannel.id === targetVoiceChannel.id) {
+		console.log("You are in the correct voice channel.");
+	} else {
+		console.log(`You are not in the correct voice channel. Please join ${targetVoiceChannel.name}.`);
+	}
 
 	const guild = interaction.guild;
 	var channelId = await Settings_Channels.findOne({ where: { name: "Matchmake Category" } });
