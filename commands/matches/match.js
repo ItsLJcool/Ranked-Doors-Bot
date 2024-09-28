@@ -1,4 +1,8 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, } = require('discord.js');
+
+const { Settings_Channels, sequelize, GetSettingsData } = require('../../SQLite/DataStuff');
+const { MatchesData } = require('../../SQLite/SaveData');
+
 
 // const wait = require('node:timers/promises').setTimeout;
 /*
@@ -28,10 +32,10 @@ async function start(interaction) {
 	await interaction.deferReply();
 
 	const guild = interaction.guild;
-	const categoryId = interaction.options.getChannel('category').id;
-	const category = guild.channels.cache.get(categoryId);
-	
-	if (!category || category.type !== 4) { // type 4 is for category channels
+	var channelId = await Settings_Channels.findOne({ where: { name: "Matchmake Category" } });
+	channelId = channelId.dataValues.channel_id;
+	const category = guild.channels.cache.get(channelId);
+	if (!category || category.type !== ChannelType.GuildCategory) { // type 4 is for category channels
 		return interaction.editReply('Category not found or is not a category channel.');
 	}
 
@@ -89,16 +93,31 @@ async function make_voice_channel(interaction, category) {
 
 async function button_confirm(interaction) {
 	await interaction.deferReply();
+	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
+
+	channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+		[PermissionsBitField.Flags.Connect]: false,
+	}).catch(console.error);
+
 	interaction.deleteReply();
 	
 	const { row, confirm, cancel } = get_buttons();
 	confirm.setDisabled(true);
 
-	await interaction.message.edit({ content: interaction.message.content + '\nMatch Started!\n\nWhen everyone dies, or players win make sure you end the match! ', components: [row] });
+	await interaction.message.edit({ content: interaction.message.content + '\nMatch Started!\n\nWhen everyone dies, or players win make sure you end the match!', components: [row] });
 }
 
 async function button_cancel(interaction) {
-	await interaction.reply("erm, match is ended trust lol");
+	await interaction.deferReply();
+	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
+
+	channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+		[PermissionsBitField.Flags.Connect]: true,
+	}).catch(console.error);
+	
+	interaction.deleteReply();
+
+	await interaction.message.edit({content: "Match was ended!", components: []});
 }
 
 module.exports = {
@@ -110,11 +129,7 @@ module.exports = {
 			option.setName('type')
 				.setDescription('Your Ranked Match Type')
 				.setRequired(true)
-				.addChoices(GameModes))
-		.addChannelOption(option =>
-			option.setName('category')
-				.setDescription('temp so i can parse properly')
-				.setRequired(true)
+				.addChoices(GameModes)
 		),
         
 	async execute(interaction) {

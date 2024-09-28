@@ -1,3 +1,4 @@
+const { ChannelType } = require('discord.js');
 const { Sequelize } = require('sequelize');
 
 const sequelize = new Sequelize('database', 'user', 'password', {
@@ -56,27 +57,51 @@ const Settings_Channels = sequelize.define('Settings_Channels', {
     },
 });
 
-async function sync() {
-    await Settings_Channels.sync();
-}
-
 const ChannelSettings_Data = [
     {
-        name: "TestChannel",
-        description: "This would be the description",
+        name: "Matchmake Category",
+        description: "This will be the category for making new Voice Channels for Ranked Matches.",
+        channelTypes: [ChannelType.GuildCategory],
+    }, {
+        name: "Queue Voice Channel",
+        description: "The Voice Channel for the Queue, Players can join or will get sent after a match is ended.",
+        channelTypes: [ChannelType.GuildVoice],
     }
 ]
 
 async function init_db() {
+    await custom_table_init(Settings_Channels, ChannelSettings_Data);
+}
+
+async function custom_table_init(table_sequalize, dataArray) {
     
-    for (const data of ChannelSettings_Data) {
-        const bruh = await Settings_Channels.findOne({ where: { name: data.name } });
+    await table_sequalize.sync();
+
+    if (dataArray.length > 8) {
+        console.error("Too many settings to edit, please reduce the amount of settings. Limit is 25");
+        return;
+    }
+
+    for (const all_data of await table_sequalize.findAll()) {
+        const exists = dataArray.some(channel => channel.name === all_data.dataValues.name);
+        if (exists) continue;
+        table_sequalize.destroy({ where: { name: all_data.dataValues.name } });
+    }
+
+    for (const data of dataArray) {
+        const bruh = await table_sequalize.findOne({ where: { name: data.name } });
 
         if (bruh != null) continue;
 
-        await Settings_Channels.create(data);
+        await table_sequalize.create(data);
     }
-
 }
 
-module.exports = { init_db, sync, Settings_Channels, sequelize };
+function GetSettingsData(table_sequalize) {
+    switch(table_sequalize) {
+        default:
+            return ChannelSettings_Data;
+    }
+}
+
+module.exports = { init_db, Settings_Channels, sequelize, GetSettingsData};

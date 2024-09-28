@@ -1,6 +1,6 @@
 const { ComponentType, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ChannelSelectMenuBuilder, ChannelType, EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
-const { Settings_Channels, sequelize } = require('../../SQLite/DataStuff');
+const { Settings_Channels, sequelize, GetSettingsData} = require('../../SQLite/DataStuff');
 
 // const wait = require('node:timers/promises').setTimeout;
 /*
@@ -10,10 +10,23 @@ const { Settings_Channels, sequelize } = require('../../SQLite/DataStuff');
 function embed_menu(interaction, tagList) {
 	var populate_fields = [];
 	for (const tag of tagList) {
+
+		var _value = `<#${tag.channel_id}>`;
+		
 		populate_fields.push({
 			name: tag.name,
 			value: tag.description,
-			inline: false
+			inline: true
+		});
+		populate_fields.push({
+			name: `Value of ${tag.name}`,
+			value: _value,
+			inline: true
+		});
+		populate_fields.push({
+			name: "\u200b",
+			value: "\u200b",
+			inline: true
 		});
 	}
 
@@ -32,15 +45,9 @@ function embed_menu(interaction, tagList) {
 const EDIT_SETTING_TIMEOUT = 120_000; // milliseconds
 
 async function channel_edit(interaction) {
-	console.log("interaction: ", interaction);
+	var channelTypes = GetSettingsData(Settings_Channels).find(channel => channel.name === interaction.values[0]).channelTypes;
 
-	var channelTypes = []
-
-	switch(interaction.values[0]) {
-		case 'TestChannel':
-			channelTypes = [ChannelType.GuildCategory];
-			break;
-	}
+	if (channelTypes == undefined) channelTypes = [ChannelType.GuildText, ChannelType.GuildVoice, ChannelType.GuildCategory];
 	
 	const channelDropdown = new ChannelSelectMenuBuilder()
 		.setCustomId('channel')
@@ -64,8 +71,15 @@ async function channel_edit(interaction) {
 
 	try {
 		const bruh = await response.awaitMessageComponent({ componentType: ComponentType.ChannelSelect, filter: collectorFilter,  time: EDIT_SETTING_TIMEOUT });
+		await bruh.deferReply();
+		await Settings_Channels.update({ channel_id: bruh.values[0] }, { where: { name: interaction.values[0] } });
+		await bruh.deleteReply();
 		
-		bruh.reply("test");
+		await interaction.deleteReply();
+		
+		interaction.message.edit({
+			embeds: [embed_menu(interaction, await Settings_Channels.findAll())],
+		});
 
 	} catch (e) {
 		await interaction.editReply({ content: 'Took too long to edit, disabling to save resources', components: [] });
@@ -79,6 +93,7 @@ module.exports = {
         
 	async execute(interaction) {
         const tagList = await Settings_Channels.findAll();
+		if (tagList.length < 1) return interaction.reply({ content: "There are no settings to edit.", ephemeral: true });
 		const embed = embed_menu(interaction, tagList);
 
 		var populate_OptionData = [];
