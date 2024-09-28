@@ -92,7 +92,6 @@ module.exports = {
     ),
         
 	async execute(interaction) {
-        const empheral = interaction.options.getBoolean('empheral') ?? false;
         await interaction.deferReply({ephemeral: empheral});
 
         const subcommand = interaction.options.getSubcommand();
