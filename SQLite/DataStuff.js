@@ -28,6 +28,16 @@ const sequelize = new Sequelize('database', 'user', 'password', {
 //     },
 // });
 
+/*
+
+https://db-migrate.readthedocs.io/en/latest/
+
+https://www.phpmyadmin.net/
+https://dbeaver.io/
+https://tableplus.com/
+
+*/
+
 /**
  * DataTypes: (ex: Sequelize.STRING)
  * https://sequelize.org/api/v7/modules/_sequelize_core.index.datatypes
@@ -40,7 +50,7 @@ const Settings_Channels = sequelize.define('Settings_Channels', {
     },
     description: Sequelize.TEXT,
     channel_id: {
-        type: Sequelize.STRING,
+        type: Sequelize.TEXT,
         defaultValue: "",
         allowNull: false,
     },
@@ -50,12 +60,23 @@ async function sync() {
     await Settings_Channels.sync();
 }
 
-async function init_db() {
-    await Settings_Channels.create({
+const ChannelSettings_Data = [
+    {
         name: "TestChannel",
         description: "This would be the description",
-        channel_id: "",
-    });
+    }
+]
+
+async function init_db() {
+    
+    for (const data of ChannelSettings_Data) {
+        const bruh = await Settings_Channels.findOne({ where: { name: data.name } });
+
+        if (bruh != null) continue;
+
+        await Settings_Channels.create(data);
+    }
+
 }
 
 module.exports = { init_db, sync, Settings_Channels, sequelize };

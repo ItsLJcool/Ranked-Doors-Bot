@@ -54,8 +54,34 @@ async function handleButton(interaction) {
 		if (!command.button_data) return;
 		
 		command.button_data.forEach((item, index) => {
-			if (item.customId !== interaction.customId) return;
+			if (item.customId !== interaction.customId && !item.any) return;
 			command.button_data[index].execute(interaction);
+		});
+	});
+}
+
+async function stringSelectMenu(interaction) {
+	const commandsWithButtons = [...interaction.client.commands.values()].filter(command => command.string_select_menu_data);
+
+	commandsWithButtons.forEach((command, key) => {
+		if (!command.string_select_menu_data) return;
+		
+		command.string_select_menu_data.forEach((item, index) => {
+			if (item.customId !== interaction.customId && !item.any) return;
+			command.string_select_menu_data[index].execute(interaction);
+		});
+	});
+}
+
+async function channelSelectMenu(interaction) {
+	const commandsWithButtons = [...interaction.client.commands.values()].filter(command => command.channel_select_menu_data);
+
+	commandsWithButtons.forEach((command, key) => {
+		if (!command.channel_select_menu_data) return;
+		
+		command.channel_select_menu_data.forEach((item, index) => {
+			if (item.customId !== interaction.customId && !item.any) return;
+			command.channel_select_menu_data[index].execute(interaction);
 		});
 	});
 }
@@ -63,6 +89,16 @@ async function handleButton(interaction) {
 module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
+
+		if (interaction.isChannelSelectMenu()) {
+			channelSelectMenu(interaction);
+			return;
+		}
+
+		if (interaction.isStringSelectMenu()) {
+			stringSelectMenu(interaction);
+			return;
+		}
 
 		if (interaction.isButton()) {
 			handleButton(interaction);

@@ -124,7 +124,6 @@ module.exports = {
 	button_data: [
 		{
 			customId: 'confirm',
-			ownerOnly: true,
 			async execute(interaction) {
 				
 				const foundKey = [...interaction.message.mentions.users.keys()].find(key => key === interaction.user.id);
