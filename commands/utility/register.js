@@ -34,6 +34,7 @@ module.exports = {
 		.setDescription('Register an account with the bot. So you can Save your Previous Matches!'),
         
 	async execute(interaction) {
+        console.log("Someone is Registering!");
 		await interaction.deferReply({ephemeral: true});
 
         const userExists = await UserData.findOne({ where: { user_id: interaction.user.id } });

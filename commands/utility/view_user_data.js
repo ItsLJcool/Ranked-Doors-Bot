@@ -32,8 +32,23 @@ async function send_user_data(interaction) {
     const user_values = user.dataValues;
 
     const time = new Date(user_values.createdAt).toLocaleString();
-
-    const elos = new Map(Object.entries(user.elo_data));
+    const eloFields = Array.from(new Map(Object.entries(user.elo_data)), ([key, value]) => {
+        if (key === 'hard') key = "SUPER HARD MODE";
+        switch (key) {
+            case 'modifiers':
+            case 'global':
+                break;
+            default:
+                key = "The "+key;
+                break;
+        }
+        
+        const formattedKey = key
+            .replace(/_/g, ' ')  // Replace underscores with spaces
+            .replace(/\b\w/g, char => char.toUpperCase());  // Capitalize first letters
+        var _return = `**${formattedKey}** - ${value}`;
+        return _return;
+    }).join('\n');
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -59,7 +74,7 @@ async function send_user_data(interaction) {
                 inline: true
             },blank_feild,blank_feild, {
                 name: "- Elo Values -",
-                value: `**The Hotel** - ${elos.get("hotel")}\n**The Mines** - ${elos.get("mines")}\n**The Backdoors** - ${elos.get("backdoor")}\n**SUPER HARD MODE** - ${elos.get("hard")}\n**Modifiers** - ${elos.get("modifiers")}`,
+                value: eloFields,
                 inline: true
             },
         )

@@ -26,41 +26,49 @@ const GameModes = [
 	{ name: 'The Backdoor', value: 'backdoor' },
 	{ name: 'SUPER HARD MODE', value: 'hard' },
 	{ name: 'Modifiers', value: 'modifiers' },
-]
+];
+
+function delete_interaction(interaction, seconds = 5) {
+	setTimeout(() => {
+		interaction.deleteReply().catch(console.error);
+	}, seconds*1_000);
+}
 
 async function start(interaction) {
 	await interaction.deferReply();
 	
-	const queueId = await Settings_Channels.findOne({ where: { name: "Queue Voice Channel" } });
-	console.log("queueId: ", queueId.dataValues.channel_id);
+	const guild = interaction.guild;
+	
+	const setting_name = "Queue Voice Channel";
+	const queueId = await Settings_Channels.findOne({ where: { name: setting_name} });
+
+	if (queueId == null || (queueId.dataValues.channel_id == "" || queueId.dataValues.channel_id == " ")) {
+		delete_interaction(interaction);
+		return interaction.editReply(`Server Settings are not Initalized! Please Initalize them.\nFailure Cause: \`${setting_name}\` is not a setting or is not intialized.`);
+	}
 	
 	const userVoiceChannel = interaction.member.voice.channel;
-	console.log("userVoiceChannel: ", userVoiceChannel);
+	const targetVoiceChannel = guild.channels.cache.get(queueId.dataValues.channel_id);
 
-	if (!userVoiceChannel && (queueId.dataValues.channel_id != "" || queueId.dataValues.channel_id != " ")) {
+	if (!userVoiceChannel  || userVoiceChannel.id !== targetVoiceChannel.id) {
+		delete_interaction(interaction);
 		return interaction.editReply(`You are not connected to <#${queueId.dataValues.channel_id}>`);
 	}
-	
-	
-	// Define the specific voice channel you want to check against (by ID or name)
-	const targetVoiceChannel = interaction.guild.channels.cache.get(queueId.dataValues.channel_id);
-	
-	// Check if the user is in the specific voice channel
-	if (userVoiceChannel.id === targetVoiceChannel.id) {
-		console.log("You are in the correct voice channel.");
-	} else {
-		console.log(`You are not in the correct voice channel. Please join ${targetVoiceChannel.name}.`);
+
+	const match_category = "Matchmake Category";
+	const channelId = await Settings_Channels.findOne({ where: { name: match_category } });
+
+	if (channelId == null || (channelId.dataValues.channel_id != "" || channelId.dataValues.channel_id != " ")) {
+		delete_interaction(interaction);
+		return interaction.editReply(`Server Settings are not Initalized! Please Initalize them.\nFailure Cause: \`${match_category}\` is not a setting or is not intialized.`);
 	}
 
-	const guild = interaction.guild;
-	var channelId = await Settings_Channels.findOne({ where: { name: "Matchmake Category" } });
-	channelId = channelId.dataValues.channel_id;
-	const category = guild.channels.cache.get(channelId);
-	if (!category || category.type !== ChannelType.GuildCategory) { // type 4 is for category channels
+	const category = guild.channels.cache.get(channelId.dataValues.channel_id);
+	if (!category || category.type !== ChannelType.GuildCategory) {
+		delete_interaction(interaction);
 		return interaction.editReply('Category not found or is not a category channel.');
 	}
 
-	// Create the voice channel
 	try {
 		make_voice_channel(interaction, category);
 	} catch (error) {
@@ -91,7 +99,6 @@ async function make_voice_channel(interaction, category) {
 	const type = interaction.options.getString('type');
 
 	const mode_name = GameModes.find(x => x.value === type).name;
-	console.log("mode_name: ", mode_name);
 
 	const channel_name = `${mode_name} | Ranked`;
 	
@@ -106,7 +113,7 @@ async function make_voice_channel(interaction, category) {
 	var { row, confirm, cancel } = get_buttons();
 	cancel.setDisabled(true);
 
-	const message = await voiceChannel.send({
+	await voiceChannel.send({
 		content: `<@${interaction.user.id}>, You are the host of ${voiceChannel.name}!`,
 		components: [row],
 	});

@@ -121,7 +121,7 @@ const MatchesData = sequelize.define('Matches', {
 const UserData = sequelize.define('User', {
     user_id: {
         type: Sequelize.TEXT,
-        primaryKey: true,
+        unique: true,
     },
     elo_data: {
         type: Sequelize.JSON,
@@ -132,6 +132,8 @@ const UserData = sequelize.define('User', {
             backdoor: 1500,
             hard: 1500,
             modifiers: 1500,
+
+            global: 1500,
         }
     },
     knobs_spent: {
@@ -157,9 +159,34 @@ UserData.belongsToMany(MatchesData, { through: 'UserMatches', foreignKey: 'user_
 MatchesData.belongsToMany(UserData, { through: 'UserMatches', foreignKey: 'match_id' });
 
 async function sync() {
-    await MatchesData.sync();
-    await UserData.sync();
-    await UserMatches.sync();
+    await _better_sync(MatchesData);
+    await _better_sync(UserData);
+    await _better_sync(UserMatches);
+}
+
+async function _better_sync(table_sequelize) {
+    await table_sequelize.sync();
+
+    const attributes = table_sequelize.getAttributes();
+
+    const before_values = await table_sequelize.findAll();
+
+    for (const record of before_values) {
+        let needsUpdate = false;
+        const updatedData = { ...record.dataValues };
+        
+        for (const [key, attribute] of Object.entries(attributes)) {
+            if (key === 'id' || key === 'createdAt' || key === 'updatedAt' || attribute.defaultValue == undefined || !(attribute.type instanceof Sequelize.JSON)) continue;
+            if (JSON.stringify(updatedData[key]) === JSON.stringify(attribute.defaultValue)) continue;
+
+            updatedData[key] = attribute.defaultValue;
+            needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+            await table_sequelize.update(updatedData, { where: { id: record.id } });
+        }
+    }
 }
 
 module.exports = { sync, MatchesData, UserData };
