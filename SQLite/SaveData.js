@@ -102,15 +102,39 @@ const MatchesData = sequelize.define('Matches', {
         allowNull: true,
         defaultValue: [], // Set default value to an empty array
     },
+
+    shop_run: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+    },
+
     players: {
         type: Sequelize.JSON, // Use JSON for players
         allowNull: false,
         defaultValue: [], // Set default value to an empty array
     },
+    alive_players: {
+        type: Sequelize.JSON,
+        allowNull: false,
+        defaultValue: [],
+    },
+
+    // For when the match itself has all the fields filled out and verified, so it can be sent to the player to evaluate their elo.
     verified: {
         type: Sequelize.BOOLEAN,
         allowNull: false,
         defaultValue: false,
+    },
+    reviewer: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+        defaultValue: "N / A",
+    },
+    feedback: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+        defaultValue: "N / A",
     },
 });
 
@@ -160,15 +184,46 @@ const UserMatches = sequelize.define('UserMatches', {
         allowNull: false,
         defaultValue: false,
     },
+
+    reached_door: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 0,
+    },
+    died: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+    },
+    cause_of_death: {
+        type: Sequelize.TEXT,
+        allowNull: false,
+        defaultValue: "unknown",
+    },
+
+    elo_stats: {
+        type: Sequelize.JSON,
+        allowNull: false,
+        defaultValue: {
+            before: { },
+            after: { },
+        },
+    },
+    rank: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: -1,
+    }
+
 }, { timestamps: false });
 
 UserData.belongsToMany(MatchesData, { through: UserMatches });
 MatchesData.belongsToMany(UserData, { through: UserMatches });
 
 async function sync() {
-    await _better_sync(MatchesData);
-    await _better_sync(UserData, true);
-    await _better_sync(UserMatches);
+    await MatchesData.sync();
+    await UserData.sync();
+    await UserMatches.sync();
 }
 
 function _get_match_type(match_type) {

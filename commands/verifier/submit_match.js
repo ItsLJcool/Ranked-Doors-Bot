@@ -1,4 +1,4 @@
-const { AttachmentBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ChannelType, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, User } = require('discord.js');
+const { Collection, AttachmentBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ChannelType, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, User } = require('discord.js');
 
 const { setting_names, Settings_Channels, Roles_Settings, sequelize, GetSettingsData} = require('../../SQLite/DataStuff');
 const { _get_match_type, MatchesData, UserData, UserMatches } = require('../../SQLite/SaveData');
@@ -60,6 +60,11 @@ async function button_confirm(interaction) {
 	await interaction.deferReply({ ephemeral: true });
 
 	for (const data of user_opening_thread) {
+		// const channel = await interaction.guild.channels.fetch(interaction.channelId);
+		console.log("data: ", data);
+		console.log("interaction.user.id: ", interaction.user.id);
+		// const channel = await interaction.guild.channels.fetch(data);
+		// console.log("channel: ", channel);
 		if (data === interaction.user.id) {
 			return interaction.editReply({ content: "You are already submitting a match!", ephemeral: true });
 		}
@@ -135,9 +140,14 @@ module.exports = {
 		await interaction.deferReply({ephemeral: true});
 
 		var role_setting = await Roles_Settings.findOne({ where: { name: 'Verifier Role' } });
+
+		if (!role_setting) {
+			return interaction.editReply({ content: "Server Settings are not Initalized!", ephemeral: true });
+		}
+		role_setting = role_setting.toJSON();
 		
 		const member = interaction.member;
-		if (!member.roles.cache.some(role => role.id === role_setting.dataValues.role_id)) {
+		if (!member.roles.cache.some(role => role.id === role_setting.role_id)) {
 			return interaction.editReply({ content: "You cannot use this command.", ephemeral: true });
 		}
 
@@ -158,7 +168,7 @@ module.exports = {
 			async execute(interaction) {
 				await button_confirm(interaction);
 			},
-		},
+		}
 	],
 
 	string_select_menu_data: [
