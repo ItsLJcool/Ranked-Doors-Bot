@@ -1,6 +1,6 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
-const { MatchesData, UserData} = require('../../SQLite/SaveData');
+const { _get_match_type, MatchesData, UserData } = require('../../SQLite/SaveData');
 
 // const wait = require('node:timers/promises').setTimeout;
 /*
@@ -14,9 +14,9 @@ const blank_feild = {
 };
 
 async function send_user_data(interaction) {
-    var target = interaction.options.getUser('target') ?? interaction.user.id;
-    const user = await UserData.findOne({
-        where: { user_id: target },
+    var target = interaction.options.getUser('target') ?? interaction.user;
+    var user = await UserData.findOne({
+        where: { user_id: target.id },
         include: {
             model: MatchesData,
             through: {
@@ -26,23 +26,14 @@ async function send_user_data(interaction) {
     });
 
     if (!user) {
-        return interaction.editReply({ content: "User not found!", ephemeral: true });
+        return interaction.editReply({ content: "User not found!" });
     }
-    
-    const user_values = user.dataValues;
 
-    const time = new Date(user_values.createdAt).toLocaleString();
+    user = user.toJSON();
+
+    const time = new Date(user.createdAt).toLocaleString();
     const eloFields = Array.from(new Map(Object.entries(user.elo_data)), ([key, value]) => {
-        if (key === 'hard') key = "SUPER HARD MODE";
-        switch (key) {
-            case 'modifiers':
-            case 'global':
-                break;
-            default:
-                key = "The "+key;
-                break;
-        }
-        
+        key = _get_match_type(key);
         const formattedKey = key
             .replace(/_/g, ' ')  // Replace underscores with spaces
             .replace(/\b\w/g, char => char.toUpperCase());  // Capitalize first letters
@@ -52,10 +43,10 @@ async function send_user_data(interaction) {
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: "Ranked Discord | ${user} Profile",
-            iconURL: interaction.user.displayAvatarURL({ format: 'png', dynamic: true }),
+            name: `Ranked Discord | ${target.username}'s Profile`,
+            iconURL: target.displayAvatarURL({ format: 'png', dynamic: true }),
         })
-        .setTitle(`${interaction.user.username}'s Profile`)
+        .setTitle(`${target.username}'s Profile`)
         .addFields({
                 name: "Total Played Matches",
                 value: `${user_values.Matches.length}`,
@@ -87,7 +78,19 @@ async function send_user_data(interaction) {
 }
 
 async function send_matches_data(interaction) {
-    // const testMatch = await UserData.findByPk(target);
+    var target = interaction.options.getUser('target') ?? interaction.user;
+    var user = await UserData.findOne({
+        where: { user_id: target.id },
+        include: [MatchesData]
+    });
+
+    if (!user) {
+        return interaction.editReply({ content: "User not found!" });
+    }
+
+    user = user.toJSON();
+
+    console.log("Mathces Data: ", user.Matches);
 
     await interaction.editReply({ content: "TODO: lol" });
 }
@@ -109,7 +112,7 @@ module.exports = {
     ),
         
 	async execute(interaction) {
-        await interaction.deferReply();
+        await interaction.deferReply({ ephemeral: true });
 
         const subcommand = interaction.options.getSubcommand();
 

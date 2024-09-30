@@ -1,3 +1,4 @@
+const { User } = require('discord.js');
 const match = require('../commands/matches/match');
 const { sequelize } = require('./DataStuff');
 const { Sequelize } = require('sequelize');
@@ -89,32 +90,27 @@ const ModifiersEnum = [
 ];
 
 const MatchesData = sequelize.define('Matches', {
-    match_id: {
-        type: Sequelize.INTEGER,
-        primaryKey: true,
-        autoIncrement: true,
-    },
     match_type: {
-        type: Sequelize.ENUM('hotel', 'mines', 'backdoor', 'hard', 'modifiers'),
+        type: Sequelize.TEXT, // Use TEXT for match_type
         allowNull: false,
+        validate: {
+            isIn: [['hotel', 'mines', 'backdoor', 'hard', 'modifiers']], // Validate against ENUM values
+        },
     },
     modifiers: {
-        type: Sequelize.ARRAY(Sequelize.ENUM(ModifiersEnum)),
+        type: Sequelize.JSON, // Use JSON instead of ARRAY for modifiers
         allowNull: true,
+        defaultValue: [], // Set default value to an empty array
     },
     players: {
-        type: Sequelize.TEXT,
+        type: Sequelize.JSON, // Use JSON for players
         allowNull: false,
-        defaultValue: '',
-        get() {
-            // Parse the stored string back to an array
-            const rawValue = this.getDataValue('players');
-            return rawValue ? rawValue.split(',') : [];
-        },
-        set(value) {
-            // Store the array as a comma-separated string
-            this.setDataValue('players', value.join(','));
-        },
+        defaultValue: [], // Set default value to an empty array
+    },
+    verified: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
     },
 });
 
@@ -153,19 +149,47 @@ const UserData = sequelize.define('User', {
     },
 });
 
-const UserMatches = sequelize.define('UserMatches', {}, { timestamps: false });
+const UserMatches = sequelize.define('UserMatches', {
+    attachments: {
+        type: Sequelize.JSON,
+        allowNull: false,
+        defaultValue: [],
+    },
+    awaiting_review: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+    },
+}, { timestamps: false });
 
-UserData.belongsToMany(MatchesData, { through: 'UserMatches', foreignKey: 'user_id' });
-MatchesData.belongsToMany(UserData, { through: 'UserMatches', foreignKey: 'match_id' });
+UserData.belongsToMany(MatchesData, { through: UserMatches });
+MatchesData.belongsToMany(UserData, { through: UserMatches });
 
 async function sync() {
     await _better_sync(MatchesData);
-    await _better_sync(UserData);
+    await _better_sync(UserData, true);
     await _better_sync(UserMatches);
 }
 
-async function _better_sync(table_sequelize) {
+function _get_match_type(match_type) {
+    if (match_type === 'hard') match_type = "SUPER HARD MODE";
+    switch (match_type) {
+        case 'modifiers':
+        case 'global':
+            // nothing
+            break;
+        default:
+            match_type = "The "+match_type;
+            break;
+    }
+    match_type = match_type.replace(/\b\w/g, char => char.toUpperCase());  // Capitalize first letters
+    return match_type;
+}
+
+async function _better_sync(table_sequelize, do_check = false) {
     await table_sequelize.sync();
+
+    if (!do_check) return;
 
     const attributes = table_sequelize.getAttributes();
 
@@ -181,6 +205,7 @@ async function _better_sync(table_sequelize) {
 
             updatedData[key] = attribute.defaultValue;
             needsUpdate = true;
+            console.log("needsUpdate: ", needsUpdate);
         }
 
         if (needsUpdate) {
@@ -189,4 +214,4 @@ async function _better_sync(table_sequelize) {
     }
 }
 
-module.exports = { sync, MatchesData, UserData };
+module.exports = { sync, _get_match_type, MatchesData, UserData, UserMatches };

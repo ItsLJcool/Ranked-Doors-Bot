@@ -1,7 +1,7 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, User, } = require('discord.js');
 
 const { Settings_Channels, sequelize, GetSettingsData } = require('../../SQLite/DataStuff');
-const { MatchesData } = require('../../SQLite/SaveData');
+const { MatchesData, UserData} = require('../../SQLite/SaveData');
 
 
 // const wait = require('node:timers/promises').setTimeout;
@@ -58,7 +58,7 @@ async function start(interaction) {
 	const match_category = "Matchmake Category";
 	const channelId = await Settings_Channels.findOne({ where: { name: match_category } });
 
-	if (channelId == null || (channelId.dataValues.channel_id != "" || channelId.dataValues.channel_id != " ")) {
+	if (channelId == null || (channelId.dataValues.channel_id == "" || channelId.dataValues.channel_id == " ")) {
 		delete_interaction(interaction);
 		return interaction.editReply(`Server Settings are not Initalized! Please Initalize them.\nFailure Cause: \`${match_category}\` is not a setting or is not intialized.`);
 	}
@@ -98,30 +98,46 @@ async function make_voice_channel(interaction, category) {
 	const guild = interaction.guild;
 	const type = interaction.options.getString('type');
 
+	const players = interaction.options.getInteger('players') ?? 12;
+
 	const mode_name = GameModes.find(x => x.value === type).name;
 
 	const channel_name = `${mode_name} | Ranked`;
 	
 	const voiceChannel = await guild.channels.create({
 		name: channel_name,
-		type: 2, // type 2 is for voice channels
+		type: ChannelType.GuildVoice,
 		parent: category.id, // Set the category as the parent
+		userLimit: players,
 	});
 
 	await interaction.editReply(`Voice channel ${voiceChannel.name} created in category ${category.name}.`);
+	delete_interaction(interaction);
 
 	var { row, confirm, cancel } = get_buttons();
 	cancel.setDisabled(true);
+
+	await interaction.member.voice.setChannel(voiceChannel);
 
 	await voiceChannel.send({
 		content: `<@${interaction.user.id}>, You are the host of ${voiceChannel.name}!`,
 		components: [row],
 	});
+	voiceChannelIDs.push({vcId: voiceChannel.id, mode_type: type, delete_channel: true });
 }
 
 async function button_confirm(interaction) {
-	await interaction.deferReply();
+	if (voiceChannelIDs.length < 1) return interaction.reply({ content: "Weird, this VC No longer is in cache. Please vacate the VC and start a new match."});
+	await interaction.deferReply({ ephemeral: true });
 	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
+
+	if (channel.members.size < 2) return interaction.editReply({ content: "You need at least 2 players to start a match!", ephemeral: true });
+	
+	for (const id of voiceChannelIDs) {
+		if (id.vcId !== interaction.channelId) continue;
+		id.delete_channel = false;
+		break;
+	}
 
 	channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
 		[PermissionsBitField.Flags.Connect]: false,
@@ -136,6 +152,7 @@ async function button_confirm(interaction) {
 }
 
 async function button_cancel(interaction) {
+	if (voiceChannelIDs.length < 1) return interaction.reply({ content: "Weird, this VC No longer is in cache. Please vacate the VC and start a new match."});
 	await interaction.deferReply();
 	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
 
@@ -143,10 +160,46 @@ async function button_cancel(interaction) {
 		[PermissionsBitField.Flags.Connect]: true,
 	}).catch(console.error);
 	
-	interaction.deleteReply();
+	await interaction.deleteReply();
+
+	const playerIds = Array.from(channel.members.keys());
+
+	var match_type = "???";
+	for (const id of voiceChannelIDs) {
+		if (id.vcId !== interaction.channelId) continue;
+		match_type = id.mode_type;
+		id.delete_channel = true;
+		break;
+	}
+
+	const match = await MatchesData.create({
+		match_type: match_type,
+		modifiers: [],
+		players: playerIds, // Store player IDs as an array (using JSON or raw array)
+	});
+	
+	for (const id of playerIds) {
+		const user = await UserData.findOne({
+			where: { user_id: id },
+		});
+	
+		if (!user) {
+			const dm_user = await interaction.guild.members.fetch(id);
+			dm_user.send({
+				content: "You aren't registered!\nThis match will not be counted towards your ELO!\nPlease register with `/register`",
+			});
+			continue;
+		}
+	
+		// Link the user with the match using addMatches
+		await user.addMatches(match); // Add the same match to multiple users
+	}
 
 	await interaction.message.edit({content: "Match was ended!", components: []});
 }
+
+// Global array to store voice channel IDs
+var voiceChannelIDs = [];
 
 module.exports = {
 	// cooldown: 60,
@@ -158,10 +211,32 @@ module.exports = {
 				.setDescription('Your Ranked Match Type')
 				.setRequired(true)
 				.addChoices(GameModes)
+		).addIntegerOption(option =>
+			option.setName('players')
+				.setDescription('Max Amount of Players allowed in the Match')
+				.setRequired(true)
+				.setMinValue(2)
+				.setMaxValue(12)
 		),
         
 	async execute(interaction) {
 		start(interaction);
+	},
+
+	async on_voice_state_update(oldState, newState) {
+		for (const theId of voiceChannelIDs) {
+			const channel = await newState.guild.channels.cache.get(theId.vcId);
+			if (!channel || channel.members.size === 0) {
+				for (const id of voiceChannelIDs) {
+					if (id.vcId !== theId.vcId) continue;
+					if (id.delete_channel) {
+						voiceChannelIDs = voiceChannelIDs.filter(id => id.vcId !== theId.vcId);
+						await channel.delete().catch(console.error);
+					}
+					break;
+				}
+			}
+		}
 	},
 
 	button_data: [

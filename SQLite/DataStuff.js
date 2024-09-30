@@ -67,11 +67,37 @@ const ChannelSettings_Data = [
         description: "The Voice Channel for the Queue, Players can join or will get sent after a match is ended.",
         channelTypes: [ChannelType.GuildVoice],
     }
-]
+];
+
+const Roles_Settings = sequelize.define('Roles_Settings', {
+    name: {
+        type: Sequelize.STRING,
+        unique: true,
+    },
+    description: Sequelize.TEXT,
+    role_id: {
+        type: Sequelize.TEXT,
+        defaultValue: "",
+        allowNull: false,
+    },
+});
+
+const RoleSettings_Data = [
+    {
+        name: "Verifier Role",
+        description: "This will be the role the bot references to allow verifiers to use special commands.",
+    }
+];
 
 async function init_db() {
     await custom_table_init(Settings_Channels, ChannelSettings_Data);
+    await custom_table_init(Roles_Settings, RoleSettings_Data);
 }
+
+const setting_names = [
+	{ name: 'Channel Settings', value: 'channel' },
+	{ name: 'Role Settings', value: 'role' },
+];
 
 async function custom_table_init(table_sequalize, dataArray) {
     
@@ -104,4 +130,4 @@ function GetSettingsData(table_sequalize) {
     }
 }
 
-module.exports = { init_db, Settings_Channels, sequelize, GetSettingsData};
+module.exports = { init_db, setting_names, Settings_Channels, Roles_Settings, sequelize, GetSettingsData};

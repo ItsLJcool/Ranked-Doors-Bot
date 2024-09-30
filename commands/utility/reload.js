@@ -1,5 +1,11 @@
 const { SlashCommandBuilder } = require('discord.js');
 
+function delete_interaction(interaction, seconds = 5) {
+	setTimeout(() => {
+		interaction.deleteReply().catch(console.error);
+	}, seconds*1_000);
+}
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('reload')
@@ -28,5 +34,6 @@ module.exports = {
             console.error(error);
             await interaction.reply(`There was an error while reloading a command \`${command.data.name}\`:\n\`${error.message}\``);
         }
+		delete_interaction(interaction, 10);
 	},
 };
