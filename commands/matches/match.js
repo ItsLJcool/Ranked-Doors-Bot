@@ -153,7 +153,7 @@ async function button_confirm(interaction) {
 	await interaction.deferReply({ ephemeral: true });
 	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
 
-	if (channel.members.size < 2) return interaction.editReply({ content: "You need at least 2 players to start a match!", ephemeral: true });
+	// if (channel.members.size < 2) return interaction.editReply({ content: "You need at least 2 players to start a match!", ephemeral: true });
 	
 	for (const id of voiceChannelIDs) {
 		if (id.vcId !== interaction.channelId) continue;
@@ -195,10 +195,12 @@ async function button_cancel(interaction) {
 	const playerIds = Array.from(channel.members.keys());
 
 	var match_type = "???";
+	var is_shop_run = false;
 	for (const id of voiceChannelIDs) {
 		if (id.vcId !== interaction.channelId) continue;
 		match_type = id.mode_type;
 		id.delete_channel = true;
+		is_shop_run = id.is_shop_run;
 		break;
 	}
 
@@ -206,6 +208,7 @@ async function button_cancel(interaction) {
 		match_type: match_type,
 		modifiers: [],
 		players: playerIds, // Store player IDs as an array (using JSON or raw array)
+		shop_run: is_shop_run,
 	});
 	
 	for (const id of playerIds) {

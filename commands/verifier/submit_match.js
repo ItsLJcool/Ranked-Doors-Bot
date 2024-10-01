@@ -58,11 +58,6 @@ async function button_confirm(interaction) {
 	await interaction.deferReply({ ephemeral: true });
 
 	for (const data of user_opening_thread) {
-		// const channel = await interaction.guild.channels.fetch(interaction.channelId);
-		console.log("data: ", data);
-		console.log("interaction.user.id: ", interaction.user.id);
-		// const channel = await interaction.guild.channels.fetch(data);
-		// console.log("channel: ", channel);
 		if (data === interaction.user.id) {
 			return interaction.editReply({ content: "You are already submitting a match!", ephemeral: true });
 		}
@@ -173,6 +168,7 @@ module.exports = {
 		{
 			customId: 'match_id_select',
 			async execute(interaction) {
+				await interaction.deferReply({ ephemeral: true });
 				const match_id = parseInt(interaction.values[0]);
 				const channel = await interaction.guild.channels.fetch(interaction.channelId);
 				if (!channel.isThread()) 
@@ -182,6 +178,20 @@ module.exports = {
 					thread_id: channel.id,
 					match_id: match_id,
 				});
+
+				const user = await UserData.findOne({
+					where: { user_id: interaction.user.id },
+				});
+
+				const user_match = await UserMatches.findOne({ where: { UserId: user.id, MatchId: match_id } });
+				if (user_match) {
+					user_match.update({ elo_stats: {
+						before: user.elo_data, 
+						after: user.elo_data
+					}});
+				}
+
+				await interaction.deleteReply();
 				await interaction.message.edit({ embeds: [verify_images_embed()], components: [] });
 			}
 		}
@@ -190,8 +200,9 @@ module.exports = {
 	async on_message_create(message) {
 		var thread_data = threads_to_check.find(thread => thread.thread_id === message.channel.id)
 		if (message.author.bot || !message.channel.isThread() || !thread_data) return;
-
+		
 		const attachments = message.attachments.map(attachment => attachment.url);
+
 		if (attachments.length < 1) return;
 		var user = await UserData.findOne({
 			where: { user_id: message.author.id },
@@ -203,11 +214,29 @@ module.exports = {
 		user = user.toJSON();
 
 		const user_match = await UserMatches.findOne({ where: { UserId: user.id, MatchId: thread_data.match_id } });
-		// console.log("user_match: ", user_match);
+
+		const match = await MatchesData.findOne({ where: { id: thread_data.match_id } });
+
 		if (user_match) {
 			user_match.update({ attachments: attachments, awaiting_review: true });
 		}
+
+		var all_matches_to_users = await UserMatches.findAll({ where: { MatchId: thread_data.match_id } });
+		var _match_ready_to_be_reviewed = false;
+		for (var _user of all_matches_to_users) {
+			_user = _user.toJSON();
+			if (!_user.awaiting_review) {
+				_match_ready_to_be_reviewed = false;
+				break;
+			}
+			_match_ready_to_be_reviewed = true;
+		}
 		
+		if (_match_ready_to_be_reviewed) {
+			console.log("A MATCH IS READY TO BE REVIEWED!!");
+			match.update({ to_be_reviewed: true });
+		}
+
 		threads_to_check = threads_to_check.filter(thread => thread.thread_id !== message.channel.id);
 		user_opening_thread = user_opening_thread.filter(user => user !== message.author.id);
 
