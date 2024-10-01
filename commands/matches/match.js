@@ -313,7 +313,12 @@ module.exports = {
 				const foundKey = [...interaction.message.mentions.users.keys()].find(key => key === interaction.user.id);
 				if (!foundKey) return interaction.reply({ content: 'You are not the host of this match!', ephemeral: true });
 
-				button_confirm(interaction);
+				try {
+					await button_confirm(interaction);
+				} catch (error) {
+					console.error(error);
+					await interaction.reply({ content: "There was an error while confirming the match!", ephemeral: true });
+				}
 			},
 		},
 		{
@@ -322,8 +327,12 @@ module.exports = {
 				
 				const foundKey = [...interaction.message.mentions.users.keys()].find(key => key === interaction.user.id);
 				if (!foundKey) return interaction.reply({ content: 'You are not the host of this match!', ephemeral: true });
-
-				button_cancel(interaction);
+				try {
+					await button_cancel(interaction);
+				} catch (error) {
+					console.error(error);
+					await interaction.reply({ content: "There was an error while canceling the match!", ephemeral: true });
+				}
 			},
 		}
 	],

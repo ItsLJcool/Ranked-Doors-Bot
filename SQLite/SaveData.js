@@ -125,6 +125,11 @@ const MatchesData = sequelize.define('Matches', {
         allowNull: false,
         defaultValue: false,
     },
+    being_verified: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+    },
 
     verified: {
         type: Sequelize.BOOLEAN,
@@ -226,9 +231,9 @@ UserData.belongsToMany(MatchesData, { through: UserMatches });
 MatchesData.belongsToMany(UserData, { through: UserMatches });
 
 async function sync() {
-    await MatchesData.sync();
-    await UserData.sync();
-    await UserMatches.sync();
+    await MatchesData.sync({ alter: true });
+    await UserData.sync({ alter: true });
+    await UserMatches.sync({ alter: true });
 }
 
 function _get_match_type(match_type) {

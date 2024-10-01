@@ -2,6 +2,7 @@ const { SlashCommandBuilder, EmbedBuilder, UserSelectMenuBuilder, ActionRowBuild
 
 const { setting_names, Settings_Channels, Roles_Settings, sequelize, GetSettingsData } = require('../../SQLite/DataStuff');
 const { _get_match_type, MatchesData, UserData, UserMatches } = require('../../SQLite/SaveData');
+const { string_select_menu_data } = require('./submit_match');
 
 function fields_embed(match_data, user_data) {
 	const shop = match_data.shop_run ? "Shop" : "No Shop";
@@ -81,10 +82,17 @@ function embed_menu(match_data, user_data) {
 	return embed;
 }
 
-async function start_verifying(interaction, match) {
+async function _interaction_reply(interaction, data) { await interaction.editReply(data); }
+async function _message_reply(interaction, data) { await interaction.message.edit(data); }
+
+async function start_verifying(interaction, match, is_message = false) {
+	const reply_stuff = !is_message ? _interaction_reply : _message_reply;
 	var user_match = await UserMatches.findOne({
 		where: { MatchId: match.id },
 	});
+	if (user_match == undefined) {
+		return reply_stuff(interaction, { content: "This User's match wasn't found! Please report this to the bot owner." });
+	}
 
 	const match_json = match.toJSON();
 	const user_json = user_match.toJSON();
@@ -110,7 +118,7 @@ async function start_verifying(interaction, match) {
 
 	const rows = [row, row2];
 
-	await interaction.editReply({ components: rows, embeds: [embed_menu(match_json, user_json)], files: user_json.attachments });
+	await reply_stuff(interaction, { components: rows, embeds: [embed_menu(match_json, user_json)], files: user_json.attachments });
 }
 
 var verifing_data = [];
@@ -153,7 +161,6 @@ module.exports = {
             return interaction.followUp({ content: `This command was not ran in <#${review_channel.channel_id}>`, ephemeral: true });
         }
 
-
 		const matchesToReview = await MatchesData.findAll({
 			where: { to_be_reviewed: true }
 		});
@@ -167,11 +174,11 @@ module.exports = {
 			user_id: interaction.user.id,
 			user_index: 0,
 			max_index: matchesToReview.length-1,
-			match_reviewing: matchesToReview[0],
+			current_match_data: matchesToReview[0].toJSON(),
 		});
-
+		
 		try {
-			start_verifying(interaction, matchesToReview[0]);
+			await start_verifying(interaction, matchesToReview[0]);
 		} catch (error) {
 			console.error(error);
 			verifing_data = verifing_data.filter(data => data.user_id !== interaction.user.id);
@@ -183,16 +190,58 @@ module.exports = {
 		{
 			customId: 'verify_alive_players',
 			async execute(interaction) {
+				await interaction.deferReply({ ephemeral: true });
 				if (interaction.user.id !== interaction.message.interaction.user.id) {
-					return interaction.reply({ content: "You are not the owner of this interaction!", ephemeral: true });
+					return interaction.editReply({ content: "You are not the owner of this interaction!" });
 				}
 
 				const user_verify = verifing_data.find(data => data.user_id === interaction.user.id);
-				console.log("user_verify:", user_verify)
-				console.log("interaction.values: ", interaction.values)
-				await user_verify.match_reviewing.update({ alive_players: interaction.values });
+				if (user_verify == undefined) {
+					await interaction.message.delete();
+					return interaction.editReply({ content: "This embed's cache was not found! Please run the command again." });
+				}
+				const match = await MatchesData.findOne({
+					where: { to_be_reviewed: true }
+				});
+				
+				start_verifying(interaction, user_verify.match_reviewing, true);
+				interaction.deleteReply();
+			}
+		},
+	],
 
-				start_verifying(interaction.message.interaction, user_verify.match_reviewing);
+	string_select_menu_data: [
+		{
+			customId: 'verify_dynamic',
+			async execute(interaction) {
+				await interaction.deferReply({ ephemeral: true });
+				if (interaction.user.id !== interaction.message.interaction.user.id) {
+					return interaction.editReply({ content: "You are not the owner of this interaction!" });
+				}
+
+				const user_verify = verifing_data.find(data => data.user_id === interaction.user.id);
+				if (user_verify == undefined) {
+					await interaction.message.delete();
+					return interaction.editReply({ content: "This embed's cache was not found! Please run the command again." });
+				}
+
+				console.log("interaction.values: ", interaction.values);
+				return;
+				
+				switch (interaction.values[0]) {
+					case 'shop':
+						user_verify.match_reviewing.update({ shop_run: true });
+						break;
+					case 'no shop':
+						user_verify.match_reviewing.update({ shop_run: false });
+						break;
+					// case 'modifiers':
+					// 	user_verify.match_reviewing.update({ modifiers: interaction.values.slice(1) });
+					// 	break;
+					default:
+						await interaction.editReply({ content: "Something went wrong while verifying the match!" });
+						break;
+				}
 			}
 		},
 	]

@@ -91,7 +91,6 @@ async function button_confirm(interaction) {
 		autoArchiveDuration: 60,     // Auto-archive duration in minutes (1 hour here)
 		type: ChannelType.PrivateThread,
 		reason: `${interaction.user.username} is submiting a match.`, // Reason for creating the thread
-		invitableUsers: [interaction.user.id], // Invite only this user
 		invitable: false,
 	}).catch(console.error);
 	
