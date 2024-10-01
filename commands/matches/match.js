@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, User, } = require('discord.js');
+const { PermissionFlagsBits, UserSelectMenuBuilder, EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, User, } = require('discord.js');
 
 const { Settings_Channels, sequelize, GetSettingsData } = require('../../SQLite/DataStuff');
 const { MatchesData, UserData} = require('../../SQLite/SaveData');
@@ -21,9 +21,9 @@ const { MatchesData, UserData} = require('../../SQLite/SaveData');
  */
 
 const GameModes = [
-	{ name: 'The Hotel', value: 'hotel' },
-	{ name: 'The Mines', value: 'mines' },
-	{ name: 'The Backdoor', value: 'backdoor' },
+	{ name: 'Hotel', value: 'hotel' },
+	{ name: 'Mines', value: 'mines' },
+	{ name: 'Backdoor', value: 'backdoor' },
 	{ name: 'SUPER HARD MODE', value: 'hard' },
 	{ name: 'Modifiers', value: 'modifiers' },
 ];
@@ -34,11 +34,9 @@ function delete_interaction(interaction, seconds = 5) {
 	}, seconds*1_000);
 }
 
-async function start(interaction) {
-	await interaction.deferReply();
-	
+async function start(interaction, modifiers = []) {
 	const guild = interaction.guild;
-	
+
 	const setting_name = "Queue Voice Channel";
 	const queueId = await Settings_Channels.findOne({ where: { name: setting_name} });
 
@@ -96,34 +94,58 @@ function get_buttons() {
 
 async function make_voice_channel(interaction, category) {
 	const guild = interaction.guild;
-	const type = interaction.options.getString('type');
+	const floor = interaction.options.getString('floor');
+	const shop = interaction.options.getString('type') == 'true';
+	const is_private = interaction.options.getBoolean('private') ?? false;
 
-	const players = interaction.options.getInteger('players') ?? 12;
+	const players = !is_private ? (interaction.options.getInteger('players') ?? 12) : 0;
 
-	const mode_name = GameModes.find(x => x.value === type).name;
+	const mode_name = GameModes.find(x => x.value === floor).name;
 
-	const channel_name = `${mode_name} | Ranked`;
+	const shop_name = shop ? 'Shop' : 'No Shop';
+	const channel_name = `${mode_name} - ${shop_name} | Ranked`;
+
+	const _perms = (is_private) ? [
+		{
+			id: guild.id,
+			deny: [PermissionFlagsBits.ViewChannel],
+		}, {
+			id: interaction.user.id,
+			allow: [PermissionFlagsBits.ViewChannel],
+		}
+	] : [];
 	
 	const voiceChannel = await guild.channels.create({
 		name: channel_name,
 		type: ChannelType.GuildVoice,
 		parent: category.id, // Set the category as the parent
 		userLimit: players,
+		permissionOverwrites: _perms,
 	});
 
 	await interaction.editReply(`Voice channel ${voiceChannel.name} created in category ${category.name}.`);
 	delete_interaction(interaction);
 
-	var { row, confirm, cancel } = get_buttons();
+	var { row, cancel } = get_buttons();
+	const rows = [row];
+	if (is_private) {
+		const player_select = new UserSelectMenuBuilder()
+			.setCustomId('player_invite_match')
+			.setPlaceholder('Invite Players to the Voice Channel')
+			.setMaxValues(1)
+			.setMinValues(1);
+		const player_select_row = new ActionRowBuilder().addComponents(player_select);
+		rows.push(player_select_row);
+	}
 	cancel.setDisabled(true);
 
 	await interaction.member.voice.setChannel(voiceChannel);
-
+	
 	await voiceChannel.send({
 		content: `<@${interaction.user.id}>, You are the host of ${voiceChannel.name}!`,
-		components: [row],
+		components: rows,
 	});
-	voiceChannelIDs.push({vcId: voiceChannel.id, mode_type: type, delete_channel: true });
+	voiceChannelIDs.push({vcId: voiceChannel.id, mode_type: floor, is_shop_run: shop, delete_channel: true });
 }
 
 async function button_confirm(interaction) {
@@ -151,14 +173,22 @@ async function button_confirm(interaction) {
 	await interaction.message.edit({ content: interaction.message.content + '\nMatch Started!\n\nWhen everyone dies, or players win make sure you end the match!', components: [row] });
 }
 
+function modifiers_embed() {
+	const embed = new EmbedBuilder()
+	.setAuthor({ name: "Creating A Match | Further Information", })
+	.setTitle("Modifiers")
+	.setDescription("Please select all the modifiers you are making for your match.")
+	.setColor("#00b0f4")
+	.setFooter({ text: "Creating a Modifier Match", })
+	.setTimestamp();
+
+	return embed;
+}
+
 async function button_cancel(interaction) {
 	if (voiceChannelIDs.length < 1) return interaction.reply({ content: "Weird, this VC No longer is in cache. Please vacate the VC and start a new match."});
 	await interaction.deferReply();
 	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
-
-	channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
-		[PermissionsBitField.Flags.Connect]: true,
-	}).catch(console.error);
 	
 	await interaction.deleteReply();
 
@@ -198,6 +228,18 @@ async function button_cancel(interaction) {
 	await interaction.message.edit({content: "Match was ended!", components: []});
 }
 
+async function button_player_invite(interaction) {
+	if (voiceChannelIDs.length < 1) return interaction.reply({ content: "Weird, this VC No longer is in cache. Please vacate the VC and start a new match." });
+	await interaction.deferReply({ ephemeral: true });
+	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
+	
+	channel.permissionOverwrites.edit(interaction.values[0], {
+		[PermissionsBitField.Flags.ViewChannel]: true,
+	}).catch(console.error);
+
+	await interaction.editReply({ content: `<@${interaction.values[0]}> has been invited to the Voice Channel.` });
+}
+
 // Global array to store voice channel IDs
 var voiceChannelIDs = [];
 
@@ -207,8 +249,8 @@ module.exports = {
 		.setName('match')
 		.setDescription('Start a new Ranked Match')
 		.addStringOption(option =>
-			option.setName('type')
-				.setDescription('Your Ranked Match Type')
+			option.setName('floor')
+				.setDescription('Your Ranked Match Floor')
 				.setRequired(true)
 				.addChoices(GameModes)
 		).addIntegerOption(option =>
@@ -217,9 +259,30 @@ module.exports = {
 				.setRequired(true)
 				.setMinValue(2)
 				.setMaxValue(12)
+		).addStringOption(option =>
+			option.setName('type')
+				.setDescription('If the run is Shop or No Shop')
+				.setRequired(true)
+				.addChoices([{ name: 'Shop', value: 'true' }, { name: 'No Shop', value: 'false' }])
+		).addBooleanOption(option =>
+			option.setName('private')
+				.setDescription('if the match should be private or public')
+				.setRequired(false)
 		),
         
 	async execute(interaction) {
+		await interaction.deferReply();
+		const is_modifiers = interaction.options.getString('floor') == 'modifiers';
+		if (is_modifiers) {
+			interaction.editReply("currently modifiers aren't available due to how I would have to make it user friendly, give me suggestions on how to make a Modifier match!");
+			return;
+		}
+		// const selected_modifiers = [];
+		// if (is_modifiers) {
+
+		// 	interaction.editReply({ embeds: [modifiers_embed()] });
+		// }
+
 		start(interaction);
 	},
 
@@ -259,6 +322,18 @@ module.exports = {
 
 				button_cancel(interaction);
 			},
-		},
-	]
+		}
+	],
+
+	user_select_menu_data: [
+		{
+			customId: 'player_invite_match',
+			async execute(interaction) {
+				const foundKey = [...interaction.message.mentions.users.keys()].find(key => key === interaction.user.id);
+				if (!foundKey) return interaction.reply({ content: 'You are not the host of this match!', ephemeral: true });
+
+				button_player_invite(interaction);
+			},
+		}
+	],
 };

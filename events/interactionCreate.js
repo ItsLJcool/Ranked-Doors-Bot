@@ -86,9 +86,27 @@ async function channelSelectMenu(interaction) {
 	});
 }
 
+async function userSelectMenu(interaction) {
+	const commandsWithButtons = [...interaction.client.commands.values()].filter(command => command.user_select_menu_data);
+
+	commandsWithButtons.forEach((command, key) => {
+		if (!command.user_select_menu_data) return;
+		
+		command.user_select_menu_data.forEach((item, index) => {
+			if (item.customId !== interaction.customId && !item.any) return;
+			command.user_select_menu_data[index].execute(interaction);
+		});
+	});
+}
+
 module.exports = {
 	name: Events.InteractionCreate,
 	async execute(interaction) {
+
+		if (interaction.isUserSelectMenu()) {
+			userSelectMenu(interaction);
+			return;
+		}
 
 		if (interaction.isChannelSelectMenu()) {
 			channelSelectMenu(interaction);
