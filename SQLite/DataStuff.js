@@ -66,7 +66,11 @@ const ChannelSettings_Data = [
         name: "Queue Voice Channel",
         description: "The Voice Channel for the Queue, Players can join or will get sent after a match is ended.",
         channelTypes: [ChannelType.GuildVoice],
-    }
+    }, {
+        name: "Review Channel",
+        description: "The Voice Channel for the Reviewer, you can only verify matches in this channel.",
+        channelTypes: [ChannelType.GuildText],
+    },
 ];
 
 const Roles_Settings = sequelize.define('Roles_Settings', {

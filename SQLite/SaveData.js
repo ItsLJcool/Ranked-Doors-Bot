@@ -120,7 +120,12 @@ const MatchesData = sequelize.define('Matches', {
         defaultValue: [],
     },
 
-    // For when the match itself has all the fields filled out and verified, so it can be sent to the player to evaluate their elo.
+    to_be_reviewed: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+    },
+
     verified: {
         type: Sequelize.BOOLEAN,
         allowNull: false,

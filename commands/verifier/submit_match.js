@@ -2,8 +2,6 @@ const { Collection, AttachmentBuilder, StringSelectMenuBuilder, StringSelectMenu
 
 const { setting_names, Settings_Channels, Roles_Settings, sequelize, GetSettingsData} = require('../../SQLite/DataStuff');
 const { _get_match_type, MatchesData, UserData, UserMatches } = require('../../SQLite/SaveData');
-const { Sequelize } = require('sequelize');
-const { parse } = require('dotenv');
 
 // const wait = require('node:timers/promises').setTimeout;
 /*

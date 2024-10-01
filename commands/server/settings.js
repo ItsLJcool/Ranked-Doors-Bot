@@ -145,7 +145,6 @@ module.exports = {
         
 	async execute(interaction) {
 		const setting_type = interaction.options.getString('type');
-		console.log("Setting Type: ", setting_type);
 		switch (setting_type) {
 			case 'channel':
 				tag_Setting = Settings_Channels;
@@ -188,11 +187,17 @@ module.exports = {
 		{
 			customId: 'channel',
 			async execute(interaction) {
+				if (interaction.user.id !== interaction.message.interaction.user.id) {
+					return interaction.reply({ content: "You are not the owner of this interaction!", ephemeral: true });
+				}
 				channel_edit(interaction);
 			}
 		}, {
 			customId: 'role',
 			async execute(interaction) {
+				if (interaction.user.id !== interaction.message.interaction.user.id) {
+					return interaction.reply({ content: "You are not the owner of this interaction!", ephemeral: true });
+				}
 				role_edit(interaction);
 			}
 		}

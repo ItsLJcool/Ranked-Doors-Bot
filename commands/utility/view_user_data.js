@@ -49,19 +49,19 @@ async function send_user_data(interaction) {
         .setTitle(`${target.username}'s Profile`)
         .addFields({
                 name: "Total Played Matches",
-                value: `${user_values.Matches.length}`,
+                value: `${user.Matches.length}`,
                 inline: true
             }, {
                 name: "Knobs Spent",
-                value: `${user_values.knobs_spent}`,
+                value: `${user.knobs_spent}`,
                 inline: true
             }, {
                 name: "Knobs Gained",
-                value: `${user_values.knobs_gained}`,
+                value: `${user.knobs_gained}`,
                 inline: true
             }, {
                 name: "Total Deaths In Ranked",
-                value: `${user_values.deaths}`,
+                value: `${user.deaths}`,
                 inline: true
             },blank_feild,blank_feild, {
                 name: "- Elo Values -",
