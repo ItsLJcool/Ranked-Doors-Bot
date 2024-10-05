@@ -1,6 +1,8 @@
 require('dotenv').config();
 require('./utils/prisma_client');
 
+const prisma = global.prisma;
+
 const fs = require('node:fs');
 const path = require('node:path');
 

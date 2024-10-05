@@ -13,7 +13,6 @@ CREATE TABLE "User" (
 CREATE TABLE "Match" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "match_type" TEXT NOT NULL,
-    "modifiers" TEXT DEFAULT '',
     "shop_run" BOOLEAN NOT NULL,
     "alive_players" TEXT DEFAULT '',
     "to_be_reviewed" BOOLEAN DEFAULT false,
@@ -28,7 +27,7 @@ CREATE TABLE "UserMatches" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "matchId" INTEGER NOT NULL,
     "userId" TEXT NOT NULL,
-    "attachments" TEXT NOT NULL,
+    "attachments" TEXT NOT NULL DEFAULT '',
     "awaiting_review" BOOLEAN DEFAULT false,
     "reached_door" INTEGER DEFAULT -1,
     "died" BOOLEAN DEFAULT false,
@@ -45,9 +44,21 @@ CREATE TABLE "Elos" (
     "mines" INTEGER NOT NULL DEFAULT 1500,
     "backdoor" INTEGER NOT NULL DEFAULT 1500,
     "hard" INTEGER NOT NULL DEFAULT 1500,
-    "modifiers" INTEGER NOT NULL DEFAULT 1500,
+    "main_floors" INTEGER NOT NULL DEFAULT 1500,
     "global" INTEGER NOT NULL DEFAULT 1500
+);
+
+-- CreateTable
+CREATE TABLE "Settings" (
+    "name" TEXT NOT NULL PRIMARY KEY,
+    "value" TEXT NOT NULL,
+    "type" INTEGER NOT NULL,
+    "menuType" INTEGER NOT NULL,
+    "description" TEXT DEFAULT 'No Description Provided.. spooky'
 );
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_id_key" ON "User"("id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Settings_name_key" ON "Settings"("name");

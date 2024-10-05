@@ -12,7 +12,7 @@ const GameModes = [
 	{ name: 'Mines', value: 'mines' },
 	{ name: 'Backdoor', value: 'backdoor' },
 	{ name: 'SUPER HARD MODE', value: 'hard' },
-	{ name: 'Modifiers', value: 'modifiers' },
+	{ name: 'All Main Floors', value: 'main_floors' },
 ];
 
 function delete_interaction(interaction, seconds = 5) {
@@ -25,30 +25,30 @@ async function start(interaction, modifiers = []) {
 	const guild = interaction.guild;
 
 	const setting_name = "Queue Voice Channel";
-	const queueId = await Settings_Channels.findOne({ where: { name: setting_name} });
+	const queueId = await prisma.settings.findUnique({ where: { name: setting_name} });
 
-	if (queueId == null || (queueId.dataValues.channel_id == "" || queueId.dataValues.channel_id == " ")) {
+	if (queueId == undefined || (queueId.value == "" || queueId.value == " ")) {
 		delete_interaction(interaction);
 		return interaction.editReply(`Server Settings are not Initalized! Please Initalize them.\nFailure Cause: \`${setting_name}\` is not a setting or is not intialized.`);
 	}
 	
 	const userVoiceChannel = interaction.member.voice.channel;
-	const targetVoiceChannel = guild.channels.cache.get(queueId.dataValues.channel_id);
+	const targetVoiceChannel = guild.channels.cache.get(queueId.value);
 
-	if (!userVoiceChannel  || userVoiceChannel.id !== targetVoiceChannel.id) {
+	if (!userVoiceChannel || userVoiceChannel.id !== targetVoiceChannel.id) {
 		delete_interaction(interaction);
-		return interaction.editReply(`You are not connected to <#${queueId.dataValues.channel_id}>`);
+		return interaction.editReply(`You are not connected to <#${queueId.value}>`);
 	}
 
 	const match_category = "Matchmake Category";
-	const channelId = await Settings_Channels.findOne({ where: { name: match_category } });
+	const channelId = await prisma.settings.findUnique({ where: { name: match_category } });
 
-	if (channelId == null || (channelId.dataValues.channel_id == "" || channelId.dataValues.channel_id == " ")) {
+	if (channelId == undefined || (channelId.value == "" || channelId.value == " ")) {
 		delete_interaction(interaction);
 		return interaction.editReply(`Server Settings are not Initalized! Please Initalize them.\nFailure Cause: \`${match_category}\` is not a setting or is not intialized.`);
 	}
 
-	const category = guild.channels.cache.get(channelId.dataValues.channel_id);
+	const category = guild.channels.cache.get(channelId.value);
 	if (!category || category.type !== ChannelType.GuildCategory) {
 		delete_interaction(interaction);
 		return interaction.editReply('Category not found or is not a category channel.');
@@ -160,26 +160,12 @@ async function button_confirm(interaction) {
 	await interaction.message.edit({ content: interaction.message.content + '\nMatch Started!\n\nWhen everyone dies, or players win make sure you end the match!', components: [row] });
 }
 
-function modifiers_embed() {
-	const embed = new EmbedBuilder()
-	.setAuthor({ name: "Creating A Match | Further Information", })
-	.setTitle("Modifiers")
-	.setDescription("Please select all the modifiers you are making for your match.")
-	.setColor("#00b0f4")
-	.setFooter({ text: "Creating a Modifier Match", })
-	.setTimestamp();
-
-	return embed;
-}
-
 async function button_cancel(interaction) {
 	if (voiceChannelIDs.length < 1) return interaction.reply({ content: "Weird, this VC No longer is in cache. Please vacate the VC and start a new match."});
 	await interaction.deferReply();
 	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
-	
-	await interaction.deleteReply();
 
-	const playerIds = Array.from(channel.members.keys());
+	var playerIds = Array.from(channel.members.keys());
 
 	var match_type = "???";
 	var is_shop_run = false;
@@ -199,6 +185,7 @@ async function button_cancel(interaction) {
 			dm_user.send({
 				content: "You aren't registered!\nThis match will not be counted towards your ELO!\nPlease register with `/register`",
 			});
+			playerIds = playerIds.filter(_id => _id !== id);
 			continue;
 		}
 	}
@@ -222,9 +209,8 @@ async function button_cancel(interaction) {
 		},
 	});
 
-	console.log("newMatch: ", newMatch);
-
 	await interaction.message.edit({content: "Match was ended!", components: []});
+	await interaction.deleteReply();
 }
 
 async function button_player_invite(interaction) {
@@ -270,20 +256,8 @@ module.exports = {
 		),
         
 	async execute(interaction) {
-		return
 		await interaction.deferReply();
-		const is_modifiers = interaction.options.getString('floor') == 'modifiers';
-		if (is_modifiers) {
-			interaction.editReply("currently modifiers aren't available due to how I would have to make it user friendly, give me suggestions on how to make a Modifier match!");
-			return;
-		}
-		// const selected_modifiers = [];
-		// if (is_modifiers) {
-
-		// 	interaction.editReply({ embeds: [modifiers_embed()] });
-		// }
-
-		start(interaction);
+		await start(interaction);
 	},
 
 	async on_voice_state_update(oldState, newState) {

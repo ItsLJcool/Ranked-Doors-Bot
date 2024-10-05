@@ -13,11 +13,15 @@ const blank_feild = {
 };
 
 function _get_match_type(match_type) {
-    if (match_type === 'hard') match_type = "SUPER HARD MODE";
     switch (match_type) {
-        case 'modifiers':
         case 'global':
             // nothing
+            break;
+        case 'hard':
+            match_type = "SUPER HARD MODE";
+            break;
+        case 'main_floors':
+            match_type = "All Main Floors";
             break;
         default:
             match_type = "The "+match_type;

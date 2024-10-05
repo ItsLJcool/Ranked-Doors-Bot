@@ -37,7 +37,6 @@ model User {
 model Match {
   id             Int      @id @default(autoincrement())
   match_type     String
-  modifiers      String?  @default("")
   shop_run       Boolean
   alive_players  String?  @default("")
   to_be_reviewed Boolean? @default(false)
@@ -48,6 +47,8 @@ model Match {
 
   // A Match can have many users participating through UserMatches
   userMatches UserMatches[] // One-to-many relationship
+  
+  createdAt DateTime @default(now())
 }
 
 model UserMatches {
@@ -61,8 +62,6 @@ model UserMatches {
   userId String
   User   User   @relation(fields: [userId], references: [id])
 
-  // Additional fields for UserMatches
-  attachments     String   @default("")
   awaiting_review Boolean? @default(false)
   reached_door    Int?     @default(-1)
   died            Boolean? @default(false)
@@ -71,23 +70,21 @@ model UserMatches {
 }
 
 model Elos {
-  id        Int @id @default(autoincrement())
-  hotel     Int @default(1500)
-  mines     Int @default(1500)
-  backdoor  Int @default(1500)
-  hard      Int @default(1500)
-  modifiers Int @default(1500)
-  global    Int @default(1500)
+  id          Int @id @default(autoincrement())
+  hotel       Int @default(1500)
+  mines       Int @default(1500)
+  backdoor    Int @default(1500)
+  hard        Int @default(1500)
+  main_floors Int @default(1500)
+  global      Int @default(1500)
 
   User User[]
 }
 
 model Settings {
-  name        String @id @unique
+  name        String  @id @unique
   value       String
   type        Int
   menuType    Int
   description String? @default("No Description Provided.. spooky")
 }
-
-
