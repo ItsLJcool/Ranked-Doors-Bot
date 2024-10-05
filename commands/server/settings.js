@@ -1,19 +1,33 @@
-const { PermissionFlagsBits, RoleSelectMenuBuilder, ComponentType, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ChannelSelectMenuBuilder, ChannelType, EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-
-const { setting_names, Settings_Channels, Roles_Settings, sequelize, GetSettingsData} = require('../../SQLite/DataStuff');
+const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ComponentType, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ChannelSelectMenuBuilder, ChannelType, RoleSelectMenuBuilder } = require('discord.js');
 
 // const wait = require('node:timers/promises').setTimeout;
 /*
     ephemeral
 */
 
-function embed_menu(interaction, tagList) {
+const prisma = global.prisma;
+
+function delete_interaction(interaction, seconds = 5) {
+	setTimeout(() => {
+		interaction.deleteReply().catch(console.error);
+	}, seconds*1_000);
+}
+
+const EDIT_SETTING_TIMEOUT = 120_000; // milliseconds
+
+function embed_menu(interaction, settings) {
 	var populate_fields = [];
-	for (const tag of tagList) {
+	for (const tag of settings) {
 		var _value = "???";
-		if (tag instanceof Settings_Channels) _value = `<#${tag.channel_id}>`;
-		else if (tag instanceof Roles_Settings) _value = `<@&${tag.role_id}>`;
-		
+		switch (tag.menuType) {
+			case 1:
+				_value = `<#${tag.value}>`;
+				break;
+			case 2:
+				_value = `<@&${tag.value}>`;
+				break;
+		}
+
 		populate_fields.push({
 			name: tag.name,
 			value: tag.description,
@@ -43,126 +57,72 @@ function embed_menu(interaction, tagList) {
 	return embed;
 }
 
-const EDIT_SETTING_TIMEOUT = 120_000; // milliseconds
-
-async function channel_edit(interaction) {
-	var channelTypes = GetSettingsData(Settings_Channels).find(channel => channel.name === interaction.values[0]).channelTypes;
-
-	if (channelTypes == undefined) channelTypes = [ChannelType.GuildText, ChannelType.GuildVoice, ChannelType.GuildCategory];
+async function settings_edit(interaction, setting) {
 	
-	const channelDropdown = new ChannelSelectMenuBuilder()
-		.setCustomId('channel')
-		.setPlaceholder('Select a channel or category to apply to the setting.')
-		.setMaxValues(1)
-		.setMinValues(1);
-	if (channelTypes.length > 0) channelDropdown.setChannelTypes(channelTypes);
+	var component = null;
+	var componentType = null;
+	switch (setting.menuType) {
+		case 1:
+			component = new ChannelSelectMenuBuilder()
+			.setCustomId('channel_settings_edit')
+			.setPlaceholder('Select a channel or category to apply to the setting.')
+			.setMaxValues(1)
+			.setMinValues(1)
+			.setChannelTypes(setting.type);
+			componentType = ComponentType.ChannelSelect;
+			break;
+		case 2:
+			component = new RoleSelectMenuBuilder()
+			.setCustomId('role_settings_edit')
+			.setPlaceholder('Select a role or category to apply to the setting.')
+			.setMaxValues(1)
+			.setMinValues(1);
+			componentType = ComponentType.RoleSelect;
+			break;
+	}
 
-	const row = new ActionRowBuilder().addComponents(channelDropdown);
+	const row = new ActionRowBuilder().setComponents(component);
 	
 	const expiredTimestamp = Math.round((Date.now() + EDIT_SETTING_TIMEOUT) / 1_000);
 
-	const response = await interaction.reply({
-		content: `Channel Selection Menu\nThis will time out in <t:${expiredTimestamp}:R> to save on resources.`,
+	const response = await interaction.editReply({
+		content: `Setting Selection Menu\nThis will time out in <t:${expiredTimestamp}:R> to save on resources.`,
 		components: [row],
 		ephemeral: true,
 		fetchReply: true,
 	});
 
-	const collectorFilter = i => i.user.id === interaction.user.id;
+	const filter = i => i.user.id === interaction.user.id;
 
 	try {
-		const bruh = await response.awaitMessageComponent({ componentType: ComponentType.ChannelSelect, filter: collectorFilter,  time: EDIT_SETTING_TIMEOUT });
+		const bruh = await response.awaitMessageComponent({ componentType, filter, time: EDIT_SETTING_TIMEOUT });
 		await bruh.deferReply();
-		await Settings_Channels.update({ channel_id: bruh.values[0] }, { where: { name: interaction.values[0] } });
+		await prisma.settings.update({ where: { name: setting.name }, data: { value: bruh.values[0] } });
 		
 		await interaction.deleteReply();
-		
 		await bruh.deleteReply();
 		
 		interaction.message.edit({
-			embeds: [embed_menu(interaction, await Settings_Channels.findAll())],
+			embeds: [embed_menu(interaction, await prisma.settings.findMany())],
 		});
 
 	} catch (e) {
 		await interaction.editReply({ content: 'Took too long to edit, disabling to save resources', components: [] });
 	}
-}
-
-async function role_edit(interaction) {	
-	const roleDropdown = new RoleSelectMenuBuilder()
-		.setCustomId('role')
-		.setPlaceholder('Select a role or category to apply to the setting.')
-		.setMaxValues(1)
-		.setMinValues(1);
-
-	const row = new ActionRowBuilder().addComponents(roleDropdown);
-	
-	const expiredTimestamp = Math.round((Date.now() + EDIT_SETTING_TIMEOUT) / 1_000);
-
-	const response = await interaction.reply({
-		content: `Role Selection Menu\nThis will time out in <t:${expiredTimestamp}:R> to save on resources.`,
-		components: [row],
-		ephemeral: true,
-		fetchReply: true,
-	});
-
-	const collectorFilter = i => i.user.id === interaction.user.id;
-
-	try {
-		const bruh = await response.awaitMessageComponent({ componentType: ComponentType.RoleSelect, filter: collectorFilter,  time: EDIT_SETTING_TIMEOUT });
-		await bruh.deferReply();
-		await Roles_Settings.update({ role_id: bruh.values[0] }, { where: { name: interaction.values[0] } });
-
-		await interaction.deleteReply();
-
-		await bruh.deleteReply();
-		
-		interaction.message.edit({
-			embeds: [embed_menu(interaction, await Roles_Settings.findAll())],
-		});
-
-	} catch (e) {
-		await interaction.editReply({ content: 'Took too long to edit, disabling to save resources', components: [] });
-	}
-}
-
-function delete_interaction(interaction, seconds = 5) {
-	setTimeout(() => {
-		interaction.deleteReply().catch(console.error);
-	}, seconds*1_000);
 }
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('settings')
-		.setDescription('View and Edit server settings.')
-		.addStringOption(option =>
-			option.setName('type')
-				.setDescription('The Setting Type')
-				.setRequired(true)
-				.addChoices(setting_names)
-		).setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles | PermissionFlagsBits.ManageChannels | PermissionFlagsBits.ManageGuild),
+		.setDescription('Change the settings for the server.')
+		.setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles | PermissionFlagsBits.ManageChannels | PermissionFlagsBits.ManageGuild),
         
 	async execute(interaction) {
-		const setting_type = interaction.options.getString('type');
-		switch (setting_type) {
-			case 'channel':
-				tag_Setting = Settings_Channels;
-				break;
-			case 'role':
-				tag_Setting = Roles_Settings;
-				break;
-			default:
-				delete_interaction(interaction);
-				return interaction.reply({content: 'Something went wrong...', ephemeral: true});
-				break;
-		}
-        const tagList = await tag_Setting.findAll();
-		if (tagList.length < 1) return interaction.reply({ content: "There are no settings to edit.", ephemeral: true });
-		const embed = embed_menu(interaction, tagList);
+		const settings = await prisma.settings.findMany();
+		if (settings.length < 1) return interaction.reply({ content: "There are no settings to edit.", ephemeral: true });
 
 		var populate_OptionData = [];
-		for (const tag of tagList) {
+		for (const tag of settings) {
 			populate_OptionData.push(
 				new StringSelectMenuOptionBuilder()
 					.setLabel(tag.name)
@@ -171,34 +131,26 @@ module.exports = {
 			);
 		}
         const select = new StringSelectMenuBuilder()
-			.setCustomId(setting_type)
+			.setCustomId("settings_edit")
 			.setPlaceholder('Select a setting to view or edit.')
 			.addOptions(populate_OptionData);
             
 		const row = new ActionRowBuilder().addComponents(select);
 
-        await interaction.reply({
-			embeds: [embed],
-            components: [row],
-        });
+		await interaction.reply({ embeds: [embed_menu(interaction, settings)], components: [row] });
 	},
 
 	string_select_menu_data: [
 		{
-			customId: 'channel',
+			customId: 'settings_edit',
 			async execute(interaction) {
+				await interaction.deferReply({ ephemeral: true });
 				if (interaction.user.id !== interaction.message.interaction.user.id) {
 					return interaction.reply({ content: "You are not the owner of this interaction!", ephemeral: true });
 				}
-				channel_edit(interaction);
-			}
-		}, {
-			customId: 'role',
-			async execute(interaction) {
-				if (interaction.user.id !== interaction.message.interaction.user.id) {
-					return interaction.reply({ content: "You are not the owner of this interaction!", ephemeral: true });
-				}
-				role_edit(interaction);
+
+				const setting = await prisma.settings.findUnique({ where: { name: interaction.values[0] } });
+				settings_edit(interaction, setting);
 			}
 		}
 	]

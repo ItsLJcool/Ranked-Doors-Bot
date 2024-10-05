@@ -1,0 +1,93 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+// npx prisma format
+// npx prisma generate
+// npx prisma migrate dev --name init
+// npx prisma migrate reset
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id String @id @unique // Discord ID or other unique identifier
+
+  elosId   Int
+  elo_data Elos? @relation(fields: [elosId], references: [id])
+
+  knobs_spent  Int @default(0)
+  knobs_gained Int @default(0)
+  deaths       Int @default(0)
+
+  // A User can participate in many matches through UserMatches
+  userMatches UserMatches[] // One-to-many relationship
+
+  createdAt DateTime @default(now())
+}
+
+model Match {
+  id             Int      @id @default(autoincrement())
+  match_type     String
+  modifiers      String?  @default("")
+  shop_run       Boolean
+  alive_players  String?  @default("")
+  to_be_reviewed Boolean? @default(false)
+  being_verified Boolean? @default(false)
+  verified       Boolean? @default(false)
+  reviewer       String?  @default("N / A")
+  feedback       String?  @default("N / A")
+
+  // A Match can have many users participating through UserMatches
+  userMatches UserMatches[] // One-to-many relationship
+}
+
+model UserMatches {
+  id Int @id @default(autoincrement())
+
+  // Foreign key to Match
+  matchId Int
+  Match   Match @relation(fields: [matchId], references: [id])
+
+  // Foreign key to User
+  userId String
+  User   User   @relation(fields: [userId], references: [id])
+
+  // Additional fields for UserMatches
+  attachments     String   @default("")
+  awaiting_review Boolean? @default(false)
+  reached_door    Int?     @default(-1)
+  died            Boolean? @default(false)
+  cause_of_death  String   @default("unknown")
+  rank            Int?     @default(-1)
+}
+
+model Elos {
+  id        Int @id @default(autoincrement())
+  hotel     Int @default(1500)
+  mines     Int @default(1500)
+  backdoor  Int @default(1500)
+  hard      Int @default(1500)
+  modifiers Int @default(1500)
+  global    Int @default(1500)
+
+  User User[]
+}
+
+model Settings {
+  name        String @id @unique
+  value       String
+  type        Int
+  menuType    Int
+  description String? @default("No Description Provided.. spooky")
+}
+
+

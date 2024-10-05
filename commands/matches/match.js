@@ -1,24 +1,11 @@
 const { PermissionFlagsBits, UserSelectMenuBuilder, EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionsBitField, User, } = require('discord.js');
 
-const { Settings_Channels, sequelize, GetSettingsData } = require('../../SQLite/DataStuff');
-const { MatchesData, UserData} = require('../../SQLite/SaveData');
-
+const prisma = global.prisma;
 
 // const wait = require('node:timers/promises').setTimeout;
 /*
     ephemeral
 */
-
-/**
- * TODO:
- * 1. Take the VC Channel ID and add a new VC with the type of match.
- * 2. Send a message in the VC Text Channel with the match details, and make it only replyable with the owner of the VC.
- * 3. That message has buttons for starting the match, and ending the match. Maybe add a button for pinging people with a role that is of the match. (Global cooldown?)
- * 
- * On match start:
- * Lock the VC Channel
- * 
- */
 
 const GameModes = [
 	{ name: 'Hotel', value: 'hotel' },
@@ -204,17 +191,8 @@ async function button_cancel(interaction) {
 		break;
 	}
 
-	const match = await MatchesData.create({
-		match_type: match_type,
-		modifiers: [],
-		players: playerIds, // Store player IDs as an array (using JSON or raw array)
-		shop_run: is_shop_run,
-	});
-	
 	for (const id of playerIds) {
-		const user = await UserData.findOne({
-			where: { user_id: id },
-		});
+		const user = await prisma.user.findUnique({ where: { id: id } });
 	
 		if (!user) {
 			const dm_user = await interaction.guild.members.fetch(id);
@@ -223,10 +201,28 @@ async function button_cancel(interaction) {
 			});
 			continue;
 		}
-	
-		// Link the user with the match using addMatches
-		await user.addMatches(match); // Add the same match to multiple users
 	}
+
+	const newMatch = await prisma.match.create({
+		data: {
+			match_type: match_type,
+			shop_run: is_shop_run,
+			userMatches: {
+				create: playerIds.map(userId => ({
+					userId,
+				}))
+			},
+		},
+		include: {
+			userMatches: {
+				include: {
+					User: true,
+				},
+			},
+		},
+	});
+
+	console.log("newMatch: ", newMatch);
 
 	await interaction.message.edit({content: "Match was ended!", components: []});
 }
@@ -274,6 +270,7 @@ module.exports = {
 		),
         
 	async execute(interaction) {
+		return
 		await interaction.deferReply();
 		const is_modifiers = interaction.options.getString('floor') == 'modifiers';
 		if (is_modifiers) {

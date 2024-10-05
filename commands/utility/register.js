@@ -1,7 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 
-const { MatchesData, UserData } = require('../../SQLite/SaveData');
-
 // const wait = require('node:timers/promises').setTimeout;
 /*
     ephemeral
@@ -28,6 +26,8 @@ function embed_menu(interaction) {
     return embed;
 }
 
+const prisma = global.prisma;
+
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('register')
@@ -36,12 +36,17 @@ module.exports = {
 	async execute(interaction) {
         console.log("Someone is Registering!");
 		await interaction.deferReply({ephemeral: true});
-
-        const userExists = await UserData.findOne({ where: { user_id: interaction.user.id } });
         
-        if (userExists) return interaction.editReply({ content: "You are already registered!", ephemeral: true });
+        const user = await prisma.user.findUnique({ where: { id: interaction.user.id, } });
 
-        const user = await UserData.create({ user_id: interaction.user.id });
+        if (user) return interaction.editReply({ content: "You are already registered!" });
+        
+        await prisma.user.create({
+            data: {
+              id: interaction.user.id,
+              elo_data: { create: {} }
+            }
+        });
 
 		await interaction.editReply({
 			embeds: [embed_menu(interaction)],

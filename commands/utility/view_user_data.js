@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
-
-const { _get_match_type, MatchesData, UserData } = require('../../SQLite/SaveData');
+const prisma = global.prisma;
 
 // const wait = require('node:timers/promises').setTimeout;
 /*
@@ -13,26 +12,32 @@ const blank_feild = {
     inline: true
 };
 
+function _get_match_type(match_type) {
+    if (match_type === 'hard') match_type = "SUPER HARD MODE";
+    switch (match_type) {
+        case 'modifiers':
+        case 'global':
+            // nothing
+            break;
+        default:
+            match_type = "The "+match_type;
+            break;
+    }
+    match_type = match_type.replace(/\b\w/g, char => char.toUpperCase());  // Capitalize first letters
+    return match_type;
+}
+
 async function send_user_data(interaction) {
     var target = interaction.options.getUser('target') ?? interaction.user;
-    var user = await UserData.findOne({
-        where: { user_id: target.id },
-        include: {
-            model: MatchesData,
-            through: {
-                attributes: [],
-            },
-        }
-    });
+    const user = await prisma.user.findUnique({ where: { id: target.id }, include: { elo_data: true, userMatches: true } });
 
     if (!user) {
         return interaction.editReply({ content: "User not found!" });
     }
 
-    user = user.toJSON();
-
     const time = new Date(user.createdAt).toLocaleString();
     const eloFields = Array.from(new Map(Object.entries(user.elo_data)), ([key, value]) => {
+        if (key === 'id') return;
         key = _get_match_type(key);
         const formattedKey = key
             .replace(/_/g, ' ')  // Replace underscores with spaces
@@ -49,7 +54,7 @@ async function send_user_data(interaction) {
         .setTitle(`${target.username}'s Profile`)
         .addFields({
                 name: "Total Played Matches",
-                value: `${user.Matches.length}`,
+                value: `${user.userMatches.length}`,
                 inline: true
             }, {
                 name: "Knobs Spent",
@@ -78,20 +83,6 @@ async function send_user_data(interaction) {
 }
 
 async function send_matches_data(interaction) {
-    var target = interaction.options.getUser('target') ?? interaction.user;
-    var user = await UserData.findOne({
-        where: { user_id: target.id },
-        include: [MatchesData]
-    });
-
-    if (!user) {
-        return interaction.editReply({ content: "User not found!" });
-    }
-
-    user = user.toJSON();
-
-    console.log("Mathces Data: ", user.Matches);
-
     await interaction.editReply({ content: "TODO: lol" });
 }
 

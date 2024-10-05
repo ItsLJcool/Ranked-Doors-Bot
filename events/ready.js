@@ -1,15 +1,13 @@
 const { Events } = require('discord.js');
-
-const { init_db, Settings_Channels, sequelize } = require('../SQLite/DataStuff');
-const { sync, MatchesData } = require('../SQLite/SaveData');
+const { init_settings } = require('../utils/server_settings');
 
 module.exports = {
 	name: Events.ClientReady,
 	once: true,
 	async execute(client) {
+
 		try {
-			await init_db();
-			await sync();
+			await init_settings();
 		} catch (error) {
 			console.error(error);
 		}

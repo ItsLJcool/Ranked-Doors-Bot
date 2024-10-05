@@ -1,9 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, UserSelectMenuBuilder, ActionRowBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 
-const { setting_names, Settings_Channels, Roles_Settings, sequelize, GetSettingsData } = require('../../SQLite/DataStuff');
-const { _get_match_type, MatchesData, UserData, UserMatches } = require('../../SQLite/SaveData');
-const { string_select_menu_data } = require('./submit_match');
-
 function fields_embed(match_data, user_data) {
 	const shop = match_data.shop_run ? "Shop" : "No Shop";
 	const died = user_data.died ? "Yes" : "No";
@@ -67,6 +63,7 @@ function string_menu_options(match_data) {
 }
 
 function embed_menu(match_data, user_data) {
+	return
 	// console.log("user_data: ", user_data);
 	
 	const shop = match_data.shop_run ? "Shop" : "No Shop";
@@ -82,14 +79,22 @@ function embed_menu(match_data, user_data) {
 	return embed;
 }
 
-async function _interaction_reply(interaction, data) { await interaction.editReply(data); }
-async function _message_reply(interaction, data) { await interaction.message.edit(data); }
+async function _interaction_reply(interaction, data) {
+	if (interaction == undefined) return;
+	await interaction.editReply(data);
+}
+async function _message_reply(interaction, data) {
+	if (interaction.message == undefined) _interaction_reply(interaction, data);
+	await interaction.message.edit(data);
+}
 
 async function start_verifying(interaction, match, is_message = false) {
+	return
 	const reply_stuff = !is_message ? _interaction_reply : _message_reply;
 	var user_match = await UserMatches.findOne({
 		where: { MatchId: match.id },
 	});
+	
 	if (user_match == undefined) {
 		return reply_stuff(interaction, { content: "This User's match wasn't found! Please report this to the bot owner." });
 	}
@@ -129,45 +134,44 @@ module.exports = {
 		.setDescription('VERIFIER ONLY: Gets a match to be verified, and makes a new thread.'),
     
 	async execute(interaction) {
+		return
 		await interaction.deferReply();
 
 		if (verifing_data.find(data => data.user_id === interaction.user.id)) {
-			interaction.deleteReply();
-			return interaction.followUp({ content: "You are already verifying a match!", ephemeral: true  });	
+			await interaction.followUp({ content: "You are already verifying a match!", ephemeral: true  });
+			return interaction.deleteReply();
 		}
 
 		var role_setting = await Roles_Settings.findOne({ where: { name: 'Verifier Role' } });
 
 		if (!role_setting || (role_setting.dataValues.role_id == "" || role_setting.dataValues.role_id == " ")) {
-			interaction.deleteReply();
-			return interaction.followUp({ content: "Server Settings are not Initalized!", ephemeral: true  });
+			await interaction.followUp({ content: "Server Settings are not Initalized!", ephemeral: true  });
+			return interaction.deleteReply();
 		}
 		role_setting = role_setting.toJSON();
 		
 		const member = interaction.member;
 		if (!member.roles.cache.some(role => role.id === role_setting.role_id)) {
-			interaction.deleteReply();
-			return interaction.followUp({ content: "You cannot use this command.", ephemeral: true });
+			await interaction.followUp({ content: "You cannot use this command.", ephemeral: true });
+			return interaction.deleteReply();
 		}
 
         var review_channel = await Settings_Channels.findOne({ where: { name: 'Review Channel' } });
 		if (!review_channel || (review_channel.dataValues.channel_id == "" || review_channel.dataValues.channel_id == " ")) {
-			interaction.deleteReply();
-			return interaction.followUp({ content: "Server Settings are not Initalized!", ephemeral: true });
+			await interaction.followUp({ content: "Server Settings are not Initalized!", ephemeral: true });
+			return interaction.deleteReply();
         }
         review_channel = review_channel.toJSON();
         if (interaction.channel.id !== review_channel.channel_id) {
-			interaction.deleteReply();
-            return interaction.followUp({ content: `This command was not ran in <#${review_channel.channel_id}>`, ephemeral: true });
+			await interaction.followUp({ content: `This command was not ran in <#${review_channel.channel_id}>`, ephemeral: true });
+			return interaction.deleteReply();
         }
 
-		const matchesToReview = await MatchesData.findAll({
-			where: { to_be_reviewed: true }
-		});
+		return
 
 		if (!matchesToReview || matchesToReview == undefined || matchesToReview.length < 1) {
-			interaction.deleteReply();
-			return interaction.followUp({ content: "There are no matches to be reviewed!", ephemeral: true });
+			await interaction.followUp({ content: "There are no matches to be reviewed!", ephemeral: true });
+			return interaction.deleteReply();
 		}
 		
 		verifing_data.push({
@@ -200,10 +204,12 @@ module.exports = {
 					await interaction.message.delete();
 					return interaction.editReply({ content: "This embed's cache was not found! Please run the command again." });
 				}
-				const match = await MatchesData.findOne({
-					where: { to_be_reviewed: true }
-				});
+				// const match = await MatchesData.findOne({
+				// 	where: { to_be_reviewed: true }
+				// });
 				
+				console.log("user_verify.match_reviewing: ", user_verify.match_reviewing);
+				return
 				start_verifying(interaction, user_verify.match_reviewing, true);
 				interaction.deleteReply();
 			}

@@ -1,8 +1,5 @@
 const { Collection, AttachmentBuilder, StringSelectMenuBuilder, StringSelectMenuOptionBuilder, ActionRowBuilder, ChannelType, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder, User } = require('discord.js');
 
-const { setting_names, Settings_Channels, Roles_Settings, sequelize, GetSettingsData} = require('../../SQLite/DataStuff');
-const { _get_match_type, MatchesData, UserData, UserMatches } = require('../../SQLite/SaveData');
-
 // const wait = require('node:timers/promises').setTimeout;
 /*
     ephemeral
@@ -74,6 +71,7 @@ async function button_confirm(interaction) {
 	user = user.toJSON();
 
 	var _has_match_to_submit = false;
+	console.log("user.Matches: ", user.Matches);
 	for (const match of user.Matches) {
 		if (match.verified || match.UserMatches.awaiting_review) continue;
 		_has_match_to_submit = true;
@@ -129,6 +127,7 @@ module.exports = {
 		.setDescription('VERIFIER ONLY: Sends an embed for submitting a match.'),
         
 	async execute(interaction) {
+		return
 		await interaction.deferReply({ephemeral: true});
 
 		var role_setting = await Roles_Settings.findOne({ where: { name: 'Verifier Role' } });
