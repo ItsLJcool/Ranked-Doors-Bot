@@ -50,6 +50,7 @@ async function send_user_data(interaction) {
         return _return;
     }).join('\n');
 
+    console.log("user: ", user)
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `Ranked Discord | ${target.username}'s Profile`,
@@ -61,21 +62,13 @@ async function send_user_data(interaction) {
                 value: `${user.userMatches.length}`,
                 inline: true
             }, {
-                name: "Knobs Spent",
-                value: `${user.knobs_spent}`,
-                inline: true
-            }, {
-                name: "Knobs Gained",
-                value: `${user.knobs_gained}`,
-                inline: true
-            }, {
                 name: "Total Deaths In Ranked",
                 value: `${user.deaths}`,
-                inline: true
-            },blank_feild,blank_feild, {
+                inline: false
+            }, {
                 name: "- Elo Values -",
                 value: eloFields,
-                inline: true
+                inline: false
             },
         )
         .setColor("#00b0f4")

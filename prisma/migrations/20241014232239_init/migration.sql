@@ -19,7 +19,8 @@ CREATE TABLE "Match" (
     "being_verified" BOOLEAN DEFAULT false,
     "verified" BOOLEAN DEFAULT false,
     "reviewer" TEXT DEFAULT 'N / A',
-    "feedback" TEXT DEFAULT 'N / A'
+    "feedback" TEXT DEFAULT 'N / A',
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
@@ -27,7 +28,6 @@ CREATE TABLE "UserMatches" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "matchId" INTEGER NOT NULL,
     "userId" TEXT NOT NULL,
-    "attachments" TEXT NOT NULL DEFAULT '',
     "awaiting_review" BOOLEAN DEFAULT false,
     "reached_door" INTEGER DEFAULT -1,
     "died" BOOLEAN DEFAULT false,

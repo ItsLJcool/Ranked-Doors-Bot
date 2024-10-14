@@ -24,8 +24,6 @@ model User {
   elosId   Int
   elo_data Elos? @relation(fields: [elosId], references: [id])
 
-  knobs_spent  Int @default(0)
-  knobs_gained Int @default(0)
   deaths       Int @default(0)
 
   // A User can participate in many matches through UserMatches
