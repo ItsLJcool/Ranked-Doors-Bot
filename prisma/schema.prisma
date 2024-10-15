@@ -40,8 +40,8 @@ model Match {
   to_be_reviewed Boolean? @default(false)
   being_verified Boolean? @default(false)
   verified       Boolean? @default(false)
+  calculated_elo Boolean? @default(false)
   reviewer       String?  @default("N / A")
-  feedback       String?  @default("N / A")
 
   // A Match can have many users participating through UserMatches
   userMatches UserMatches[] // One-to-many relationship

@@ -4,4 +4,4 @@ database.sqlite
 config.json
 MATCHES_IMAGES
 prisma/release.db
-prisma/migrations
+prisma/release.db-journal

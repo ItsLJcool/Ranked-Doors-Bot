@@ -140,7 +140,7 @@ async function button_confirm(interaction) {
 	await interaction.deferReply({ ephemeral: true });
 	const channel = interaction.guild.channels.cache.get(interaction.channelId);
 
-	if (channel.members.size < 2) return interaction.editReply({ content: "You need at least 2 players to start a match!", ephemeral: true });
+	// if (channel.members.size < 2) return interaction.editReply({ content: "You need at least 2 players to start a match!", ephemeral: true });
 	
 	for (const id of voiceChannelIDs) {
 		if (id.vcId !== interaction.channelId) continue;

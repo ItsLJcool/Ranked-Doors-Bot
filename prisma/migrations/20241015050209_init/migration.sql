@@ -2,8 +2,6 @@
 CREATE TABLE "User" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "elosId" INTEGER NOT NULL,
-    "knobs_spent" INTEGER NOT NULL DEFAULT 0,
-    "knobs_gained" INTEGER NOT NULL DEFAULT 0,
     "deaths" INTEGER NOT NULL DEFAULT 0,
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "User_elosId_fkey" FOREIGN KEY ("elosId") REFERENCES "Elos" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -18,8 +16,8 @@ CREATE TABLE "Match" (
     "to_be_reviewed" BOOLEAN DEFAULT false,
     "being_verified" BOOLEAN DEFAULT false,
     "verified" BOOLEAN DEFAULT false,
+    "calculated_elo" BOOLEAN DEFAULT false,
     "reviewer" TEXT DEFAULT 'N / A',
-    "feedback" TEXT DEFAULT 'N / A',
     "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
