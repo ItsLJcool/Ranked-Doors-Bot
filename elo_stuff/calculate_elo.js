@@ -52,7 +52,7 @@ async function calculate_elo(userMatches, type) {
     // Assign ranks while accounting for ties
     let currentRank = 1;
     for (let i = 0; i < userMatches.length; i++) {
-        if (i > 0 && (userMatches[i].reached_door === userMatches[i - 1].reached_door) && (userMatches[i].died !=)) 
+        if (i > 0 && (userMatches[i].reached_door === userMatches[i - 1].reached_door) && (userMatches[i].died != userMatches[i - 1].died)) 
             userMatches[i].rank = userMatches[i - 1].rank; // Same rank for ties
         else
             userMatches[i].rank = currentRank; // Assign current rank
