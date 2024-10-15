@@ -3,3 +3,5 @@ database.sqlite
 .env
 config.json
 MATCHES_IMAGES
+prisma/release.db
+prisma/migrations

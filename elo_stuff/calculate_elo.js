@@ -3,6 +3,7 @@ require('../utils/prisma_client');
 
 const path = require('path');
 const fs = require('fs');
+const fsPromises = require('fs').promises; // For async operations like mkdir
 
 let elo_settings = { kFactor: 40 };
 fs.readFile(path.resolve(`EloCalculationSettings.json`), 'utf8', (err, jsonString) => {
@@ -26,7 +27,15 @@ async function Calculate_Elo_Match(matchId) {
     if (matchId == undefined) return console.error("No matchId provided!");
     const match = await prisma.match.findUnique({ where: { id: matchId }, include: { userMatches: true } });
 
+    // TODO: Try catch this, and if fails save previous data instead of new data overriding due to elo calculation errors.
     await calculate_elo(match.userMatches, match.match_type);
+
+    try {
+        await fsPromises.rm(path.resolve(`MATCHES_IMAGES/${match.id}`), { recursive: true, force: true });
+        console.log('Directory deleted successfully');
+    } catch (err) {
+        console.error('Error deleting directory:', err);
+    }
 
     await prisma.match.update({ where: { id: match.id }, data: { being_verified: false, verified: true } });
 }
