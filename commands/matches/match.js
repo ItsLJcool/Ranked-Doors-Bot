@@ -72,11 +72,17 @@ function get_buttons() {
 		.setCustomId('cancel')
 		.setLabel('End Match')
 		.setStyle(ButtonStyle.Danger);
+	
+	var reset_match = new ButtonBuilder()
+		.setCustomId('reset_match')
+		.setLabel('Reset Match')
+		.setStyle(ButtonStyle.Secondary);
+	reset_match.setDisabled(true);
 
 	const row = new ActionRowBuilder()
-		.addComponents(confirm, cancel);
+		.addComponents(confirm, cancel, reset_match);
 	
-	return { row, confirm, cancel };
+	return { row, confirm, cancel, reset_match };
 }
 
 async function make_voice_channel(interaction, category) {
@@ -140,7 +146,7 @@ async function button_confirm(interaction) {
 	await interaction.deferReply({ ephemeral: true });
 	const channel = interaction.guild.channels.cache.get(interaction.channelId);
 
-	// if (channel.members.size < 2) return interaction.editReply({ content: "You need at least 2 players to start a match!", ephemeral: true });
+	if (channel.members.size < 2) return interaction.editReply({ content: "You need at least 2 players to start a match!", ephemeral: true });
 	
 	for (const id of voiceChannelIDs) {
 		if (id.vcId !== interaction.channelId) continue;
@@ -154,9 +160,8 @@ async function button_confirm(interaction) {
 
 	interaction.deleteReply();
 	
-	const { row, confirm, cancel } = get_buttons();
+	const { row, confirm, cancel, reset_match } = get_buttons();
 	confirm.setDisabled(true);
-
 	await interaction.message.edit({ content: interaction.message.content + '\nMatch Started!\n\nWhen everyone dies, or players win make sure you end the match!', components: [row] });
 }
 
@@ -208,9 +213,20 @@ async function button_cancel(interaction) {
 			},
 		},
 	});
+	
+	const { row, confirm, cancel, reset_match } = get_buttons();
+	confirm.setDisabled(true);
+	cancel.setDisabled(true);
+	reset_match.setDisabled(false);
 
-	await interaction.message.edit({content: "Match was ended!", components: []});
+	await interaction.message.edit({content: "Match was ended!", components: [row]});
 	await interaction.deleteReply();
+}
+
+async function button_reset_match(interaction) {
+	await interaction.deferReply({ ephemeral: true });
+
+	await interaction.editReply({ content: "Todo.\nBasically resets the VC and allows you to play with the same people without getting kicked and reseting a match." });
 }
 
 async function button_player_invite(interaction) {
