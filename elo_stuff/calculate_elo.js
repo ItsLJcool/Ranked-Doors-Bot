@@ -48,7 +48,6 @@ async function calculate_elo(userMatches, type) {
     
     userMatches.sort((a, b) => b.reached_door - a.reached_door);
     
-
     // Assign ranks while accounting for ties
     let currentRank = 1;
     for (let i = 0; i < userMatches.length; i++) {
