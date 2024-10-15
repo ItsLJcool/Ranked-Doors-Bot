@@ -33,7 +33,7 @@ async function start(interaction, modifiers = []) {
 	}
 	
 	const userVoiceChannel = interaction.member.voice.channel;
-	const targetVoiceChannel = guild.channels.fetch(queueId.value);
+	const targetVoiceChannel = guild.channels.cache.get(queueId.value);
 
 	if (!userVoiceChannel || userVoiceChannel.id !== targetVoiceChannel.id) {
 		delete_interaction(interaction);
@@ -48,7 +48,7 @@ async function start(interaction, modifiers = []) {
 		return interaction.editReply(`Server Settings are not Initalized! Please Initalize them.\nFailure Cause: \`${match_category}\` is not a setting or is not intialized.`);
 	}
 
-	const category = guild.channels.fetch(channelId.value);
+	const category = guild.channels.cache.get(channelId.value);
 	if (!category || category.type !== ChannelType.GuildCategory) {
 		delete_interaction(interaction);
 		return interaction.editReply('Category not found or is not a category channel.');
@@ -138,7 +138,7 @@ async function make_voice_channel(interaction, category) {
 async function button_confirm(interaction) {
 	if (voiceChannelIDs.length < 1) return interaction.reply({ content: "Weird, this VC No longer is in cache. Please vacate the VC and start a new match."});
 	await interaction.deferReply({ ephemeral: true });
-	const channel = interaction.guild.channelsfetch(interaction.channelId); // Replace with your voice channel ID
+	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
 
 	// if (channel.members.size < 2) return interaction.editReply({ content: "You need at least 2 players to start a match!", ephemeral: true });
 	
@@ -163,7 +163,7 @@ async function button_confirm(interaction) {
 async function button_cancel(interaction) {
 	if (voiceChannelIDs.length < 1) return interaction.reply({ content: "Weird, this VC No longer is in cache. Please vacate the VC and start a new match."});
 	await interaction.deferReply();
-	const channel = interaction.guild.channelsfetch(interaction.channelId); // Replace with your voice channel ID
+	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
 
 	var playerIds = Array.from(channel.members.keys());
 
@@ -216,7 +216,7 @@ async function button_cancel(interaction) {
 async function button_player_invite(interaction) {
 	if (voiceChannelIDs.length < 1) return interaction.reply({ content: "Weird, this VC No longer is in cache. Please vacate the VC and start a new match." });
 	await interaction.deferReply({ ephemeral: true });
-	const channel = interaction.guild.channelsfetch(interaction.channelId); // Replace with your voice channel ID
+	const channel = interaction.guild.channels.cache.get(interaction.channelId); // Replace with your voice channel ID
 	
 	channel.permissionOverwrites.edit(interaction.values[0], {
 		[PermissionsBitField.Flags.ViewChannel]: true,
@@ -262,7 +262,7 @@ module.exports = {
 
 	async on_voice_state_update(oldState, newState) {
 		for (const theId of voiceChannelIDs) {
-			const channel = await newState.guild.channelsfetch(theId.vcId);
+			const channel = await newState.guild.channels.cache.get(theId.vcId);
 			if (!channel || channel.members.size === 0) {
 				for (const id of voiceChannelIDs) {
 					if (id.vcId !== theId.vcId) continue;
