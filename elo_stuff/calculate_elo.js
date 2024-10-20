@@ -47,7 +47,7 @@ async function Calculate_Elo_Match(matchId) {
             await calculate_elo(match.userMatches, match.match_type);
         } catch (err) {
             console.error('Error calculating elo:', err);
-    
+
             for (const userMatch of prev_match.userMatches) {
                 const updatedUserElo = await prisma.elos.update({ where: { id: userMatch.user.elosId }, data: { [match.match_type]: userMatch.user.elo_data[match.match_type] } });
                 const updatedUserMatch = await prisma.userMatches.update({ where: { id: userMatch.id }, data: { rank: userMatch.rank } });
@@ -61,6 +61,7 @@ async function Calculate_Elo_Match(matchId) {
 
     }
 
+    // TODO: delete images when done calculating elo. rn its broken.
     // try {
     //     await fsPromises.rm(path.resolve(`MATCHES_IMAGES/${match.id}`), { recursive: true, force: true });
     //     console.log('Directory deleted successfully');
@@ -73,18 +74,18 @@ async function Calculate_Elo_Match(matchId) {
 
 async function calculate_elo(userMatches, type) {
     userMatches.sort((a, b) => b.reached_door - a.reached_door);
-    
+
     // Assign ranks while accounting for ties
     let currentRank = 1;
     for (let i = 0; i < userMatches.length; i++) {
-        if (i > 0 && (userMatches[i].reached_door === userMatches[i - 1].reached_door) && (userMatches[i].died != userMatches[i - 1].died)) 
+        if (i > 0 && (userMatches[i].reached_door === userMatches[i - 1].reached_door)) 
             userMatches[i].rank = userMatches[i - 1].rank; // Same rank for ties
-        else
+        else {   
             userMatches[i].rank = currentRank; // Assign current rank
-        
-        currentRank++;
+            currentRank++;
+        }
     }
-
+    const _kFactor = kFactor/(userMatches.length-1);
     for (let i = 0; i < userMatches.length; i++) {
         const elo_i = userMatches[i].user.elo_data[type];
         let nr = 0;
@@ -96,7 +97,7 @@ async function calculate_elo(userMatches, type) {
             if (userMatches[i].rank < userMatches[j].rank) score = 1;
             else if (userMatches[i].rank == userMatches[j].rank) score = 0.5;
 
-            nr += kFactor * (score - w);
+            nr += _kFactor * (score - w);
         }
         userMatches[i].user.elo_data[type] = Math.round(elo_i + nr);
     }

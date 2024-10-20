@@ -255,7 +255,7 @@ module.exports = {
 		verifing_data.push({
 			user_id: interaction.user.id,
 			user_index: __user_index,
-			max_index: matchesToReview.length,
+			max_index: matchesToReview[0].userMatches.length-1,
 			current_match_data: matchesToReview[0],
 		});
 
