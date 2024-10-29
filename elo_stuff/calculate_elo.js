@@ -45,6 +45,7 @@ async function Calculate_Elo_Match(matchId) {
         const prev_match = await JSON.parse(JSON.stringify(match));
         try {
             await calculate_elo(match.userMatches, match.match_type);
+            await calculate_elo(match.userMatches, "global");
         } catch (err) {
             console.error('Error calculating elo:', err);
 
@@ -62,6 +63,7 @@ async function Calculate_Elo_Match(matchId) {
     }
 
     // TODO: delete images when done calculating elo. rn its broken.
+    // Idea: Have it delete 30 days after match completed, so it gives time to edit the data properties!
     // try {
     //     await fsPromises.rm(path.resolve(`MATCHES_IMAGES/${match.id}`), { recursive: true, force: true });
     //     console.log('Directory deleted successfully');
@@ -85,6 +87,8 @@ async function calculate_elo(userMatches, type) {
             currentRank++;
         }
     }
+
+    // TODO: UPDATE GLOBAL ELO.
     const _kFactor = kFactor/(userMatches.length-1);
     for (let i = 0; i < userMatches.length; i++) {
         const elo_i = userMatches[i].user.elo_data[type];

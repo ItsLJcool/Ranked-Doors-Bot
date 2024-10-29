@@ -11,6 +11,8 @@ module.exports = {
 		.setDescription('Replies with Pong!'),
         
 	async execute(interaction) {
-		await interaction.reply('Pong!');
+		console.log("interaction.locale: ", interaction.locale);
+		const locales = { ja: 'ポン！', };
+		await interaction.reply(locales[interaction.locale] ?? 'Pong!');
 	},
 };
